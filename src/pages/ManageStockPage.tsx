@@ -218,6 +218,7 @@ export default function ManageStockPage() {
             newQuantity: newProduct.cantidad || 0,
             previousPrice: 0,
             newPrice: newProduct.precioUnitario || 0,
+            unidadMedicion: newProduct.unidadMedicion || 'unid',
             timestamp: Date.now()
           };
           

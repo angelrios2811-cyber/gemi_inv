@@ -12,6 +12,7 @@ export interface StockMovementData {
   newQuantity: number;
   previousPrice: number;
   newPrice: number;
+  unidadMedicion: string;
   timestamp: number;
 }
 
@@ -43,7 +44,7 @@ export class AutomaticExpenseService {
       expenseAmount = purchaseCost;
       
       // Si hay aumento de stock (con o sin cambio de precio)
-      expenseDescription = `Compra: ${movementData.productName} (+${quantityAdded} unid.)`;
+      expenseDescription = `Compra: ${movementData.productName} (+${quantityAdded} ${movementData.unidadMedicion}.)`;
       expenseCategory = 'Compras';
       
       // Solo crear gasto si el monto es mayor a 0
@@ -95,6 +96,7 @@ export class AutomaticExpenseService {
         newQuantity: newData.cantidad || 0,
         previousPrice: previousData.precioUnitario || 0,
         newPrice: newData.precioUnitario || 0,
+        unidadMedicion: newData.unidadMedicion || previousData.unidadMedicion || 'unid',
         timestamp: Date.now()
       };
       

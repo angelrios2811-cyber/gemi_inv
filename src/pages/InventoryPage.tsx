@@ -428,7 +428,12 @@ export function InventoryPage() {
           await AutomaticExpenseService.analyzeProductChanges(
             editingProduct.id,
             editingProduct,
-            updatedProduct
+            {
+              ...editingProduct,
+              cantidad: updatedProduct.cantidad || 0,
+              precioUnitario: updatedProduct.precioUnitario || 0,
+              unidadMedicion: editForm.unidadMedicion
+            }
           );
         }
       }
