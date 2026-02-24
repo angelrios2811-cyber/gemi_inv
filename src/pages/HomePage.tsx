@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Package, TrendingUp, Receipt, Plus, AlertTriangle, Filter, ChevronDown, ShoppingBasket } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Package, TrendingUp, Receipt, Plus, AlertTriangle, Filter, ChevronDown, ShoppingBasket, Sparkles, Activity, Zap } from 'lucide-react';
 import { useInventory } from '../store/useFirestoreStore';
 import { BCVService } from '../services/bcvService';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import { scrollToTop } from '../utils/scrollUtils';
 
 type FilterPeriod = 'todos' | 'hoy' | 'semanal' | 'quincenal' | 'mensual' | 'fecha';
 
@@ -21,12 +22,21 @@ export function HomePage() {
     loadExpenses
   } = useInventory();
 
+  const navigate = useNavigate();
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [loadingRates, setLoadingRates] = useState(true);
   const [filter, setFilter] = useState<FilterOptions>({ period: 'todos' });
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Función para navegar con scroll to top
+  const handleNavigate = (path: string) => {
+    scrollToTop();
+    navigate(path);
+  };
 
   useEffect(() => {
+    setIsAnimating(true);
     loadProducts();
     loadExpenses();
     
@@ -165,24 +175,46 @@ export function HomePage() {
   const currentInventoryValueUSDT = !loadingRates && rates.usdt > 0 ? currentInventoryValueBs / rates.usdt : 0;
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">INVCAS</h1>
-          <p className="text-white/40 text-sm mt-0.5">Inventario y gastos familiares</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/settings"
-            className="p-2 rounded-lg glass hover:bg-white/10 transition-colors duration-200"
-          >
-            ⚙️
-          </Link>
-          <div className="w-10 h-10 rounded-full glass flex items-center justify-center">
-            <span className="text-violet-400 text-sm font-bold">IC</span>
+    <div className={`flex flex-col gap-6 transition-all duration-1000 transform ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+      {/* Enhanced Header */}
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center relative overflow-hidden">
+                {/* Inner Glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-transparent rounded-2xl"></div>
+                {/* Animated Sparkles */}
+                <Sparkles className="absolute top-1 right-1 w-3 h-3 text-violet-300 animate-pulse" />
+                <Zap className="text-violet-300 relative z-10" size={24} />
+              </div>
+              {/* Ring Animation */}
+              <div className="absolute -inset-1 border border-violet-500/30 rounded-2xl animate-pulse"></div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-white bg-gradient-to-r from-violet-300 to-blue-300 bg-clip-text text-transparent">INVCAS</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <Activity size={12} className="text-green-400/60" />
+                <p className="text-white/50 text-sm">Sistema de gestión activo</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-green-400 text-xs font-medium">v4.0.0</span>
+            </div>
+            <Link
+              to="/settings"
+              className="p-2.5 rounded-xl glass hover:bg-white/10 transition-all duration-200 hover:scale-110 group"
+            >
+              <span className="text-xl group-hover:rotate-12 transition-transform inline-block">⚙️</span>
+            </Link>
           </div>
         </div>
+        
+        {/* Header Glow Line */}
+        <div className="mt-4 h-0.5 bg-gradient-to-r from-violet-500/30 via-violet-400/50 to-violet-500/30 rounded-full"></div>
       </div>
 
       {/* Exchange Rates Header */}
@@ -332,158 +364,180 @@ export function HomePage() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="glass p-4 animate-slide-up" style={{ animationDelay: '50ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Package size={14} className="text-violet-400" />
-            <span className="text-white/40 text-xs font-medium">Productos</span>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xl font-bold text-violet-300 sm:text-2xl md:text-3xl">
-              {totalProducts}
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-              <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-                <span className="text-xs text-white/40 font-medium block sm:hidden">Unidades totales</span>
-                <span className="text-xs text-white/40 font-medium hidden sm:block">Unidades totales</span>
-                <span className="text-sm font-bold text-white block sm:hidden ml-2">{totalItems} unids</span>
-                <span className="text-sm font-bold text-white hidden sm:block ml-2">{totalItems} unids</span>
+      {/* Enhanced Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="glass-strong p-5 rounded-2xl border border-white/10 relative overflow-hidden animate-slide-up" style={{ animationDelay: '50ms' }}>
+          {/* Glow Effect */}
+          <div className="absolute -inset-px bg-gradient-to-r from-violet-500/10 to-blue-500/10 rounded-2xl blur-lg"></div>
+          
+          {/* Content */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center">
+                <Package size={20} className="text-violet-300" />
               </div>
-              <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-                <span className="text-xs text-white/40 font-medium block sm:hidden">Categorías</span>
-                <span className="text-xs text-white/40 font-medium hidden sm:block">Categorías</span>
-                <span className="text-sm font-bold text-white block sm:hidden ml-2">{[...new Set(products.map(p => p.categoria))].length}</span>
-                <span className="text-sm font-bold text-white hidden sm:block ml-2">{[...new Set(products.map(p => p.categoria))].length}</span>
+              <span className="text-white/50 text-sm font-medium">Productos</span>
+            </div>
+            <div className="space-y-3">
+              <p className="text-3xl font-bold text-violet-300">
+                {totalProducts}
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                <div className="bg-white/5 rounded-xl px-4 py-2.5 border border-white/10 hover:bg-white/10 transition-colors">
+                  <span className="text-xs text-white/40 font-medium block sm:hidden">Unidades totales</span>
+                  <span className="text-xs text-white/40 font-medium hidden sm:block">Unidades totales</span>
+                  <span className="text-sm font-bold text-white block sm:hidden ml-2">{totalItems} unids</span>
+                  <span className="text-sm font-bold text-white hidden sm:block ml-2">{totalItems} unids</span>
+                </div>
+                <div className="bg-white/5 rounded-xl px-4 py-2.5 border border-white/10 hover:bg-white/10 transition-colors">
+                  <span className="text-xs text-white/40 font-medium block sm:hidden">Categorías</span>
+                  <span className="text-xs text-white/40 font-medium hidden sm:block">Categorías</span>
+                  <span className="text-sm font-bold text-white block sm:hidden ml-2">{[...new Set(products.map(p => p.categoria))].length}</span>
+                  <span className="text-sm font-bold text-white hidden sm:block ml-2">{[...new Set(products.map(p => p.categoria))].length}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
         
-        <div className="glass p-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Receipt size={14} className="text-emerald-400" />
-            <span className="text-white/40 text-xs font-medium">Valor inventario</span>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xl font-bold text-emerald-300 sm:text-2xl md:text-3xl">
-              {BCVService.formatBs(currentInventoryValueBs)}
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-              {!loadingRates && rates.bcv > 0 && (
-                <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-                  <span className="text-xs text-violet-300 font-medium block sm:hidden">BCV</span>
-                  <span className="text-xs text-violet-300 font-medium hidden sm:block">BCV</span>
-                  <span className="text-sm font-bold text-violet-200 block sm:hidden ml-2">{(currentInventoryValueUSD.toFixed(2))}</span>
-                  <span className="text-sm font-bold text-violet-200 hidden sm:block ml-2">{(currentInventoryValueUSD.toFixed(2))}</span>
-                </div>
-              )}
-              {!loadingRates && rates.usdt > 0 && (
-                <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-                  <span className="text-xs text-blue-300 font-medium block sm:hidden">USDT</span>
-                  <span className="text-xs text-blue-300 font-medium hidden sm:block">USDT</span>
-                  <span className="text-sm font-bold text-blue-200 block sm:hidden ml-2">{BCVService.formatUSDT(currentInventoryValueUSDT).replace('USDT ', '')}</span>
-                  <span className="text-sm font-bold text-blue-200 hidden sm:block ml-2">{BCVService.formatUSDT(currentInventoryValueUSDT).replace('USDT ', '')}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="glass p-6 col-span-1 sm:col-span-2 animate-slide-up" style={{ animationDelay: '150ms' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-                <TrendingUp size={18} className="text-violet-300" />
+        <div className="glass-strong p-5 rounded-2xl border border-white/10 relative overflow-hidden animate-slide-up" style={{ animationDelay: '100ms' }}>
+          {/* Glow Effect */}
+          <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-2xl blur-lg"></div>
+          
+          {/* Content */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-600/30 border border-emerald-500/40 flex items-center justify-center">
+                <Receipt size={20} className="text-emerald-300" />
               </div>
-              <div>
-                <h3 className="text-white font-semibold">Total gastado</h3>
-                <p className="text-white/40 text-xs">
-                  {filter.period === 'todos' ? 'Período actual' : 
-                   filter.period === 'hoy' ? 'Hoy' :
-                   filter.period === 'semanal' ? 'Última semana' :
-                   filter.period === 'quincenal' ? 'Últimos 15 días' :
-                   filter.period === 'mensual' ? 'Último mes' :
-                   filter.period === 'fecha' ? 'Rango personalizado' : 'Período actual'}
-                </p>
-              </div>
+              <span className="text-white/50 text-sm font-medium">Valor inventario</span>
             </div>
-            
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-              >
-                <Filter size={14} className="text-white/60" />
-                <span className="text-xs text-white/60">
-                  {filter.period === 'todos' ? 'Todos' :
-                   filter.period === 'hoy' ? 'Hoy' :
-                   filter.period === 'semanal' ? 'Semanal' :
-                   filter.period === 'quincenal' ? 'Quincenal' :
-                   filter.period === 'mensual' ? 'Mensual' :
-                   filter.period === 'fecha' ? 'Personalizado' : 'Todos'}
-                </span>
-                <ChevronDown size={12} className="text-white/40" />
-              </button>
-              
-              {showFilterDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-violet-950/95 rounded-lg border border-violet-500/30 z-50 shadow-2xl">
-                  <div className="p-2">
-                    <button
-                      onClick={() => { setFilter({ period: 'todos' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'todos' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      onClick={() => { setFilter({ period: 'hoy' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'hoy' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Hoy
-                    </button>
-                    <button
-                      onClick={() => { setFilter({ period: 'semanal' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'semanal' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Semanal
-                    </button>
-                    <button
-                      onClick={() => { setFilter({ period: 'quincenal' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'quincenal' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Quincenal
-                    </button>
-                    <button
-                      onClick={() => { setFilter({ period: 'mensual' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'mensual' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Mensual
-                    </button>
-                    <div className="border-t border-white/10 my-1"></div>
-                    <button
-                      onClick={() => { setFilter({ period: 'fecha' }); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
-                        filter.period === 'fecha' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
-                      }`}
-                    >
-                      Rango de fechas
-                    </button>
+            <div className="space-y-3">
+              <p className="text-3xl font-bold text-emerald-300">
+                {BCVService.formatBs(currentInventoryValueBs)}
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                {!loadingRates && rates.bcv > 0 && (
+                  <div className="bg-white/5 rounded-xl px-4 py-2.5 border border-white/10 hover:bg-white/10 transition-colors">
+                    <span className="text-xs text-violet-300 font-medium block sm:hidden">BCV</span>
+                    <span className="text-xs text-violet-300 font-medium hidden sm:block">BCV</span>
+                    <span className="text-sm font-bold text-violet-200 block sm:hidden ml-2">${(currentInventoryValueUSD.toFixed(2))}</span>
+                    <span className="text-sm font-bold text-violet-200 hidden sm:block ml-2">${(currentInventoryValueUSD.toFixed(2))}</span>
                   </div>
-                </div>
-              )}
+                )}
+                {!loadingRates && rates.usdt > 0 && (
+                  <div className="bg-white/5 rounded-xl px-4 py-2.5 border border-white/10 hover:bg-white/10 transition-colors">
+                    <span className="text-xs text-blue-300 font-medium block sm:hidden">USDT</span>
+                    <span className="text-xs text-blue-300 font-medium hidden sm:block">USDT</span>
+                    <span className="text-sm font-bold text-blue-200 block sm:hidden ml-2">{BCVService.formatUSDT(currentInventoryValueUSDT).replace('USDT ', '')}</span>
+                    <span className="text-sm font-bold text-blue-200 hidden sm:block ml-2">{BCVService.formatUSDT(currentInventoryValueUSDT).replace('USDT ', '')}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        </div>
+        
+        {/* Enhanced Total Spent Card */}
+        <div className="glass-strong p-6 col-span-1 sm:col-span-2 rounded-2xl border border-white/10 relative overflow-hidden animate-slide-up" style={{ animationDelay: '150ms' }}>
+          {/* Glow Effect */}
+          <div className="absolute -inset-px bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-2xl blur-lg"></div>
+          
+          {/* Content */}
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center">
+                  <TrendingUp size={22} className="text-violet-300" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold text-lg">Total gastado</h3>
+                  <p className="text-white/50 text-xs mt-1">
+                    {filter.period === 'todos' ? 'Período actual' : 
+                     filter.period === 'hoy' ? 'Hoy' :
+                     filter.period === 'semanal' ? 'Última semana' :
+                     filter.period === 'quincenal' ? 'Últimos 15 días' :
+                     filter.period === 'mensual' ? 'Último mes' :
+                     filter.period === 'fecha' ? 'Rango personalizado' : 'Período actual'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Enhanced Filter Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-200 hover:scale-105"
+                >
+                  <Filter size={16} className="text-white/60" />
+                  <span className="text-xs text-white/60 font-medium">
+                    {filter.period === 'todos' ? 'Todos' :
+                     filter.period === 'hoy' ? 'Hoy' :
+                     filter.period === 'semanal' ? 'Semanal' :
+                     filter.period === 'quincenal' ? 'Quincenal' :
+                     filter.period === 'mensual' ? 'Mensual' :
+                     filter.period === 'fecha' ? 'Personalizado' : 'Todos'}
+                  </span>
+                  <ChevronDown size={14} className="text-white/40" />
+                </button>
+                
+                {showFilterDropdown && (
+                  <div className="absolute right-0 mt-2 w-52 bg-violet-950/95 rounded-xl border border-violet-500/30 z-50 shadow-2xl overflow-hidden">
+                    <div className="p-2">
+                      <button
+                        onClick={() => { setFilter({ period: 'todos' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'todos' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        onClick={() => { setFilter({ period: 'hoy' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'hoy' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Hoy
+                      </button>
+                      <button
+                        onClick={() => { setFilter({ period: 'semanal' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'semanal' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Semanal
+                      </button>
+                      <button
+                        onClick={() => { setFilter({ period: 'quincenal' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'quincenal' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Quincenal
+                      </button>
+                      <button
+                        onClick={() => { setFilter({ period: 'mensual' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'mensual' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Mensual
+                      </button>
+                      <div className="border-t border-white/10 my-1"></div>
+                      <button
+                        onClick={() => { setFilter({ period: 'fecha' }); setShowFilterDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 rounded text-xs transition-colors ${
+                          filter.period === 'fecha' ? 'bg-violet-600 text-white' : 'text-white/60 hover:bg-violet-500/20'
+                        }`}
+                      >
+                        Rango de fechas
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           
           {/* Date Range Picker for Custom Range */}
           {filter.period === 'fecha' && (
@@ -554,64 +608,89 @@ export function HomePage() {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          to="/add-product"
-          className="glass-button rounded-xl p-4 flex flex-col items-center gap-3 animate-slide-up aura-glow-subtle"
+      {/* Enhanced Quick Actions */}
+      <div className="grid grid-cols-4 gap-3">
+        <button
+          onClick={() => handleNavigate('/manage-stock')}
+          className="glass-strong rounded-2xl p-4 flex flex-col items-center justify-center gap-3 animate-slide-up aura-glow-subtle relative overflow-hidden group hover:scale-105 transition-all duration-300"
           style={{ animationDelay: '200ms' }}
         >
-          <div className="w-10 h-10 rounded-lg bg-violet-500/15 flex items-center justify-center">
-            <Plus size={20} className="text-violet-400" />
+          {/* Hover Glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-blue-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <Plus size={20} className="text-violet-300" />
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="text-white font-semibold text-sm">Agregar</p>
+              <p className="text-white/50 text-xs">Producto</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-white font-semibold text-sm">Agregar</p>
-            <p className="text-white/40 text-xs">Producto</p>
-          </div>
-        </Link>
+        </button>
         
-        <Link
-          to="/manage-stock"
-          className="glass-button rounded-xl p-4 flex flex-col items-center gap-3 animate-slide-up aura-glow-subtle"
+        <button
+          onClick={() => handleNavigate('/manage-stock')}
+          className="glass-strong rounded-2xl p-4 flex flex-col items-center justify-center gap-3 animate-slide-up aura-glow-subtle relative overflow-hidden group hover:scale-105 transition-all duration-300"
           style={{ animationDelay: '250ms' }}
         >
-          <div className="w-10 h-10 rounded-lg bg-violet-500/15 flex items-center justify-center">
-            <Package size={20} className="text-violet-400" />
+          {/* Hover Glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-green-600/30 border border-emerald-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <Package size={20} className="text-emerald-300" />
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="text-white font-semibold text-sm">Stock</p>
+              <p className="text-white/50 text-xs">Gestionar</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-white font-semibold text-sm">Stock</p>
-            <p className="text-white/40 text-xs">Gestionar</p>
-          </div>
-        </Link>
+        </button>
         
-        <Link
-          to="/inventory"
-          className="glass-button rounded-xl p-4 flex flex-col items-center gap-3 animate-slide-up aura-glow-subtle"
+        <button
+          onClick={() => handleNavigate('/inventory')}
+          className="glass-strong rounded-2xl p-4 flex flex-col items-center justify-center gap-3 animate-slide-up aura-glow-subtle relative overflow-hidden group hover:scale-105 transition-all duration-300"
           style={{ animationDelay: '300ms' }}
         >
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-            <Package size={20} className="text-emerald-400" />
+          {/* Hover Glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-600/30 border border-blue-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <Package size={20} className="text-blue-300" />
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="text-white font-semibold text-sm">Inventario</p>
+              <p className="text-white/50 text-xs">Stock</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-white font-semibold text-sm">Inventario</p>
-            <p className="text-white/40 text-xs">Stock</p>
-          </div>
-        </Link>
+        </button>
         
-        <Link
-          to="/expenses"
-          className="glass-button rounded-xl p-4 flex flex-col items-center gap-3 animate-slide-up aura-glow-subtle"
+        <button
+          onClick={() => handleNavigate('/expenses')}
+          className="glass-strong rounded-2xl p-4 flex flex-col items-center justify-center gap-3 animate-slide-up aura-glow-subtle relative overflow-hidden group hover:scale-105 transition-all duration-300"
           style={{ animationDelay: '350ms' }}
         >
-          <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
-            <Receipt size={20} className="text-amber-400" />
+          {/* Hover Glow */}
+          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/30 to-orange-600/30 border border-amber-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <Receipt size={20} className="text-amber-300" />
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="text-white font-semibold text-sm">Gastos</p>
+              <p className="text-white/50 text-xs">Facturas</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-white font-semibold text-sm">Gastos</p>
-            <p className="text-white/40 text-xs">Facturas</p>
-          </div>
-        </Link>
+        </button>
       </div>
 
       {/* Recent Products */}

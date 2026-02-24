@@ -12,6 +12,7 @@ export interface ProductItem {
   precioUSDT?: number; // Precio en USDT (calculado)
   tasaBCV?: number; // Tasa BCV usada
   tasaUSDT?: number; // Tasa USDT usada
+  unidadMedicion?: string; // Nueva: unidad de medición (kg, lt, unid)
   precioHistorico?: {
     fecha: string;
     precioUnitario: number; // Precio en Bs

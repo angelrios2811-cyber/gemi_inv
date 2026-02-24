@@ -3,7 +3,6 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
-import AddProductPage from './pages/AddProductPage';
 import ManageStockPage from './pages/ManageStockPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { ExpensesPage } from './pages/ExpensesPage';
@@ -20,7 +19,6 @@ function App() {
         {/* Protected Routes */}
         <Route element={<Layout />}>
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-          <Route path="/add-product" element={<ProtectedRoute><AddProductPage /></ProtectedRoute>} />
           <Route path="/manage-stock" element={<ProtectedRoute><ManageStockPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />

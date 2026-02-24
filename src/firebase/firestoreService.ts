@@ -14,6 +14,7 @@ export interface Product {
   precioUSDT: number;
   stockAlert: number;
   minimumStock: number;
+  unidadMedicion?: string; // Nueva: unidad de medición (opcional para compatibilidad)
   createdAt: any; // Timestamp de Firebase
   updatedAt: any; // Timestamp de Firebase
   precioHistory: PriceHistory[];

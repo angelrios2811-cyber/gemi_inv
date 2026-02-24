@@ -7,6 +7,8 @@ import { handleCapitalization } from '../utils/textUtils';
 import { Link } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
 import { adaptFirebaseToLocal } from '../utils/productAdapter';
+import { formatStockWithUnit, getUnitDisplay } from '../utils/stockUtils';
+import { scrollToTop } from '../utils/scrollUtils';
 import type { ProductItem } from '../types';
 
 export function InventoryPage() {
@@ -21,6 +23,7 @@ export function InventoryPage() {
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [deleteMessage, setDeleteMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [editMessage, setEditMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [loadingRates, setLoadingRates] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,7 +31,8 @@ export function InventoryPage() {
     nombre: '',
     categoria: '',
     alertaBajoStock: false,
-    stockMinimo: 1
+    stockMinimo: 1,
+    unidadMedicion: 'unid' // Nueva: unidad de medición por defecto
   });
 
   // Filter products based on search term
@@ -334,6 +338,7 @@ export function InventoryPage() {
   }, [loadProducts]);
 
   const handleDelete = (product: any) => {
+    scrollToTop();
     setDeletingProduct(product);
   };
 
@@ -347,6 +352,7 @@ export function InventoryPage() {
         type: 'success',
         message: `Producto "${deletingProduct.nombre}" eliminado`
       });
+      scrollToTop();
       
       // Cerrar modal después de mostrar éxito
       setTimeout(() => {
@@ -360,6 +366,7 @@ export function InventoryPage() {
         type: 'error',
         message: 'Error al eliminar el producto. Inténtalo de nuevo.'
       });
+      scrollToTop();
     }
   };
 
@@ -369,13 +376,15 @@ export function InventoryPage() {
   };
 
   const handleEdit = (product: any) => {
+    scrollToTop();
     const adaptedProduct = adaptFirebaseToLocal(product);
     setEditingProduct(product);
     setEditForm({
       nombre: adaptedProduct.nombre,
       categoria: adaptedProduct.categoria,
       alertaBajoStock: adaptedProduct.alertaBajoStock,
-      stockMinimo: adaptedProduct.stockMinimo
+      stockMinimo: adaptedProduct.stockMinimo,
+      unidadMedicion: adaptedProduct.unidadMedicion || 'unid'
     });
   };
 
@@ -386,12 +395,16 @@ export function InventoryPage() {
       nombre: '',
       categoria: '',
       alertaBajoStock: false,
-      stockMinimo: 1
+      stockMinimo: 1,
+      unidadMedicion: 'unid'
     });
   };
 
   const handleUpdateProduct = async () => {
     if (!editingProduct || !editForm.nombre || !editForm.categoria) return;
+    
+    setEditLoading(true);
+    setEditMessage(null);
     
     try {
       // Actualizar el producto
@@ -399,7 +412,8 @@ export function InventoryPage() {
         nombre: editForm.nombre,
         categoria: editForm.categoria,
         stockAlert: editForm.alertaBajoStock ? editForm.stockMinimo : 0,
-        minimumStock: editForm.stockMinimo
+        minimumStock: editForm.stockMinimo,
+        unidadMedicion: editForm.unidadMedicion
       });
       
       // Obtener datos actualizados del producto
@@ -419,23 +433,18 @@ export function InventoryPage() {
         }
       }
       
-      setEditMessage({
-        type: 'success',
-        message: `Producto "${editForm.nombre}" actualizado correctamente`
-      });
+      setEditMessage({ type: 'success', message: `Producto "${editForm.nombre}" actualizado correctamente` });
       
-      // Cerrar modal después de mostrar éxito
+      // Cerrar modal después de un breve delay
       setTimeout(() => {
         handleCloseEdit();
-        setEditMessage(null);
-      }, 2000);
+      }, 1500);
       
     } catch (error) {
       console.error('Error updating product:', error);
-      setEditMessage({
-        type: 'error',
-        message: 'Error al actualizar el producto. Inténtalo de nuevo.'
-      });
+      setEditMessage({ type: 'error', message: 'Error al actualizar el producto. Inténtalo de nuevo.' });
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -694,11 +703,11 @@ export function InventoryPage() {
                   
                   <div className="text-right">
                     <div className={`text-sm font-bold ${getStockStatusColor(status)}`}>
-                      Stock: {product.cantidad || 0} unid.
+                      Stock: {formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)}
                     </div>
                     {product.stockAlert > 0 && (
                       <div className="text-xs text-white/50 mt-1 bg-white/5 rounded px-2 py-1 inline-block">
-                        Mínimo: {product.minimumStock}
+                        Mínimo: {formatStockWithUnit(product.minimumStock, product.unidadMedicion)}
                       </div>
                     )}
                   </div>
@@ -801,7 +810,7 @@ export function InventoryPage() {
           <h3 className="text-white font-medium mb-2">No hay productos</h3>
           <p className="text-white/60 text-sm mb-4">Agrega productos para comenzar a gestionar tu inventario</p>
           <button
-            onClick={() => window.location.href = '/add-product'}
+            onClick={() => window.location.href = '/manage-stock'}
             className="btn-primary aura-glow py-3 px-6"
           >
             Agregar Producto
@@ -812,7 +821,7 @@ export function InventoryPage() {
       {/* Edit Product Modal */}
       {editingProduct && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
+          className="fixed inset-0 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               handleCloseEdit();
@@ -899,6 +908,28 @@ export function InventoryPage() {
                 </select>
               </div>
 
+              <div className="relative">
+                <label className="text-xs text-white/40 block mb-1">Unidad de Medición</label>
+                <select
+                  value={editForm.unidadMedicion}
+                  onChange={(e) => setEditForm({ ...editForm, unidadMedicion: e.target.value })}
+                  className="form-select w-full appearance-none cursor-pointer"
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 0.75rem center',
+                    backgroundSize: '1rem'
+                  }}
+                >
+                  <option value="unid">Unidades (unid)</option>
+                  <option value="kg">Kilogramos (kg)</option>
+                  <option value="lt">Litros (lt)</option>
+                </select>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-white/40 flex items-center gap-2">
@@ -927,11 +958,13 @@ export function InventoryPage() {
                     <input
                       type="number"
                       value={editForm.stockMinimo}
-                      onChange={(e) => setEditForm({ ...editForm, stockMinimo: parseInt(e.target.value) || 1 })}
-                      min="1"
+                      onChange={(e) => setEditForm({ ...editForm, stockMinimo: parseFloat(e.target.value) || 0 })}
+                      min="0"
+                      step="0.1"
+                      placeholder="0"
                       className="glass-input w-20"
                     />
-                    <span className="text-xs text-amber-200 ml-2">unidades</span>
+                    <span className="text-xs text-amber-200 ml-2">{getUnitDisplay(editForm.unidadMedicion || 'unid')}</span>
                   </div>
                 )}
               </div>
@@ -960,10 +993,10 @@ export function InventoryPage() {
               </button>
               <button
                 onClick={handleUpdateProduct}
-                disabled={!editForm.nombre || !editForm.categoria}
+                disabled={!editForm.nombre || !editForm.categoria || editLoading}
                 className="btn-primary flex-1 aura-glow disabled:opacity-50 disabled:cursor-not-allowed py-2.5"
               >
-                Actualizar
+                {editLoading ? 'Actualizando...' : 'Actualizar'}
               </button>
             </div>
           </div>
@@ -973,7 +1006,7 @@ export function InventoryPage() {
       {/* Delete Confirmation Modal */}
       {deletingProduct && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
+          className="fixed inset-0 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setDeletingProduct(null);
@@ -996,7 +1029,7 @@ export function InventoryPage() {
                 ¿Estás seguro de que quieres eliminar <span className="font-bold">{deletingProduct.nombre}</span>?
               </p>
               <p className="text-red-200/70 text-xs">
-                Categoría: {deletingProduct.categoria} • Stock: {deletingProduct.cantidad || 0} unidades
+                Categoría: {deletingProduct.categoria} • Stock: {formatStockWithUnit(deletingProduct.cantidad || 0, deletingProduct.unidadMedicion)}
               </p>
             </div>
 
@@ -1034,3 +1067,5 @@ export function InventoryPage() {
     </div>
   );
 }
+
+export default InventoryPage;

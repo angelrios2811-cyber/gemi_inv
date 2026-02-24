@@ -12,6 +12,7 @@ export interface ProductAdapter {
   precioUSDT: number;
   stockAlert: number;
   minimumStock: number;
+  unidadMedicion: string; // Nueva: unidad de medición
   createdAt: any;
   updatedAt: any;
   precioHistory: any[];
@@ -50,6 +51,7 @@ export const adaptLocalToFirebase = (product: any) => {
     precioUSDT: product.precioUSDT || (product.precioUnitario / 35.8),
     stockAlert: product.alertaBajoStock ? product.stockMinimo : 0,
     minimumStock: product.stockMinimo,
+    unidadMedicion: product.unidadMedicion || 'unid', // Nueva: unidad de medición por defecto
     updatedAt: firebase.firestore.Timestamp.now()
   };
 };

@@ -4,6 +4,7 @@ import { useInventory } from '../store/useFirestoreStore';
 import { BCVService } from '../services/bcvService';
 import { Link } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import { scrollToTop } from '../utils/scrollUtils';
 import type { FilterOptions, ExpenseRecord } from '../types';
 
 export function ExpensesPage() {
@@ -205,6 +206,7 @@ export function ExpensesPage() {
         type: 'success',
         message: `Gasto "${newExpense.descripcion}" agregado correctamente`
       });
+      scrollToTop();
       
       // Reset form
       setNewExpense({
@@ -222,12 +224,14 @@ export function ExpensesPage() {
         type: 'error',
         message: 'Error al agregar el gasto. Inténtalo de nuevo.'
       });
+      scrollToTop();
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteExpense = (expense: any) => {
+    scrollToTop();
     setDeletingExpense(expense);
   };
 
@@ -243,6 +247,7 @@ export function ExpensesPage() {
         type: 'success',
         message: `Gasto "${deletingExpense.descripcion}" eliminado correctamente`
       });
+      scrollToTop();
       
       loadExpenses();
       
@@ -255,6 +260,7 @@ export function ExpensesPage() {
         type: 'error',
         message: 'Error al eliminar el gasto. Inténtalo de nuevo.'
       });
+      scrollToTop();
     } finally {
       setLoading(false);
     }
@@ -403,7 +409,10 @@ export function ExpensesPage() {
           <h1 className="text-lg font-semibold text-white">Gastos y Facturas</h1>
         </div>
         <button
-          onClick={() => setShowAddExpense(true)}
+          onClick={() => {
+            scrollToTop();
+            setShowAddExpense(true);
+          }}
           className="p-2 rounded-lg glass-button text-violet-400 hover:text-violet-300 aura-glow"
         >
           <Plus size={18} />
@@ -710,7 +719,7 @@ export function ExpensesPage() {
       {/* Success/Error Message - Modal Style like Add-Product */}
       {expenseMessage && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
+          className="fixed inset-0 flex items-start justify-center z-50 animate-fade-in pt-8 modal-container"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setExpenseMessage(null);
@@ -789,22 +798,22 @@ export function ExpensesPage() {
       {/* Add Expense Modal */}
       {showAddExpense && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-start justify-center z-[10000] animate-fade-in pt-8 modal-container"
+          className="fixed inset-0 flex items-start justify-center z-[10000] animate-fade-in pt-8 modal-container"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowAddExpense(false);
             }
           }}
         >
-          <div className="p-6 w-full max-w-md animate-slide-up shadow-2xl modal-content">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Agregar Gasto</h2>
-              <button
-                onClick={() => setShowAddExpense(false)}
-                className="p-1 rounded-lg hover:bg-white/10 text-white/50"
-              >
-                <X size={18} />
-              </button>
+          <div className="p-6 rounded-xl max-w-sm mx-4 animate-slide-up shadow-2xl modal-content">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center">
+                <DollarSign size={24} className="text-violet-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-medium">Agregar Gasto</h3>
+                <p className="text-white/60 text-sm mt-1">Registra un nuevo gasto en tu presupuesto</p>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -872,17 +881,17 @@ export function ExpensesPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowAddExpense(false)}
-                  className="py-2 rounded-lg glass-button text-white/60"
+                  className="btn-secondary flex-1 py-2.5"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAddExpense}
                   disabled={!newExpense.descripcion || newExpense.montoBs <= 0 || loading}
-                  className="py-2 rounded-lg glass-button text-violet-300 font-medium disabled:opacity-50 aura-glow"
+                  className="btn-primary flex-1 aura-glow disabled:opacity-50 disabled:cursor-not-allowed py-2.5"
                 >
                   {loading ? 'Guardando...' : 'Agregar'}
                 </button>
@@ -895,7 +904,7 @@ export function ExpensesPage() {
       {/* Delete Confirmation Modal */}
       {deletingExpense && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-start justify-center z-[10000] animate-fade-in pt-8 modal-container"
+          className="fixed inset-0 flex items-start justify-center z-[10000] animate-fade-in pt-8 modal-container"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setDeletingExpense(null);
