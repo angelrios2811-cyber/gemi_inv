@@ -64,7 +64,10 @@ export class AutomaticExpenseService {
         createdAt: new Date().toISOString()
       };
       
-      await FirestoreService.createExpense(expenseRecord);
+      await FirestoreService.createExpense({
+        ...expenseRecord,
+        userId: 'admin' // Default userId for automatic expenses
+      });
       
     } catch (error) {
       console.error('❌ Error creando gasto automático:', error);

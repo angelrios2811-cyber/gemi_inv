@@ -1,94 +1,123 @@
 import { create } from 'zustand';
+import type { AuthState } from '../types/auth';
+import AuthService from '../services/authService';
 
-interface User {
-  email: string;
-  name: string;
-  role: 'admin';
-}
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-// Credenciales hardcodeadas para el sistema
-const VALID_CREDENTIALS = {
-  email: 'admin@invcas.com',
-  password: 'INVCAS2024!',
-  name: 'Administrador',
-  role: 'admin' as const
-};
-
-// Estado global simple
-let globalState: AuthState = {
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
-  login: async () => {},
-  logout: () => {}
-};
+  isLoading: false,
+  token: null,
 
-// Recuperar estado del localStorage al inicio
-const storedUser = localStorage.getItem('auth-user');
-const storedAuth = localStorage.getItem('auth-isAuthenticated');
-
-if (storedUser && storedAuth === 'true') {
-  try {
-    globalState.user = JSON.parse(storedUser);
-    globalState.isAuthenticated = true;
-  } catch {
-    // Limpiar si hay error
-    localStorage.removeItem('auth-user');
-    localStorage.removeItem('auth-isAuthenticated');
-  }
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  user: globalState.user,
-  isAuthenticated: globalState.isAuthenticated,
-
+  // Login
   login: async (email: string, password: string) => {
-    // Simular delay de autenticación
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Validar credenciales
-    if (email === VALID_CREDENTIALS.email && password === VALID_CREDENTIALS.password) {
-      const user: User = {
-        email: VALID_CREDENTIALS.email,
-        name: VALID_CREDENTIALS.name,
-        role: VALID_CREDENTIALS.role
-      };
-
-      // Guardar en localStorage
-      localStorage.setItem('auth-user', JSON.stringify(user));
-      localStorage.setItem('auth-isAuthenticated', 'true');
-
-      // Actualizar estado global
-      globalState.user = user;
-      globalState.isAuthenticated = true;
-
+    set({ isLoading: true });
+    
+    try {
+      const { user, token } = await AuthService.login(email, password);
+      
       set({
         user,
-        isAuthenticated: true
+        isAuthenticated: true,
+        isLoading: false,
+        token
       });
-    } else {
-      throw new Error('Credenciales incorrectas');
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
     }
   },
 
+  // Registro
+  register: async (userData: {
+    email: string;
+    username: string;
+    password: string;
+    role?: 'user' | 'admin';
+  }) => {
+      set({ isLoading: true });
+      
+      try {
+        // Convert role to match service expectations
+        const serviceData = {
+          email: userData.email,
+          username: userData.username,
+          password: userData.password,
+          role: userData.role as 'user' | 'admin' | undefined
+        };
+        await AuthService.register(serviceData);
+        
+        // Auto-login después del registro
+        const { user: loggedInUser, token } = await AuthService.login(userData.email, userData.password);
+        
+        set({
+          user: loggedInUser,
+          isAuthenticated: true,
+          isLoading: false,
+          token
+        });
+      } catch (error) {
+        set({ isLoading: false });
+        throw error;
+      }
+    },
+
+  // Logout
   logout: () => {
-    // Limpiar localStorage
-    localStorage.removeItem('auth-user');
-    localStorage.removeItem('auth-isAuthenticated');
-
-    // Actualizar estado global
-    globalState.user = null;
-    globalState.isAuthenticated = false;
-
+    AuthService.logout();
     set({
       user: null,
-      isAuthenticated: false
+      isAuthenticated: false,
+      isLoading: false,
+      token: null
     });
+  },
+
+  // Verificar autenticación al inicio
+  checkAuth: () => {
+    const token = AuthService.getCurrentToken();
+    const user = AuthService.getCurrentUser();
+    
+    if (token && user && AuthService.verifyToken(token)) {
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        token
+      });
+    } else {
+      AuthService.logout();
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        token: null
+      });
+    }
+  },
+
+  // Cambiar contraseña
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    const user = get().user;
+    if (!user) {
+      throw new Error('No hay usuario autenticado');
+    }
+
+    set({ isLoading: true });
+    
+    try {
+      await AuthService.changePassword(user.id, oldPassword, newPassword);
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  // Verificar si es admin
+  isAdmin: () => {
+    const user = get().user;
+    return user?.role === 'admin';
   }
 }));
+
+// Verificar autenticación al inicio
+useAuthStore.getState().checkAuth();

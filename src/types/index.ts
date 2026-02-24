@@ -21,6 +21,7 @@ export interface ProductItem {
     tasaUSDT: number; // Tasa USDT usada
     variacionUSD?: number; // Variación respecto al precio anterior en USD
   }[]; // Historial completo de precios con seguimiento en USD
+  userId?: string; // Multi-user support
 }
 
 export interface ExpenseRecord {
@@ -35,6 +36,7 @@ export interface ExpenseRecord {
   usdtRate: number;
   tipo: 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros'; // compra de inventario u otro gasto
   productos?: ProductItem[]; // si es compra, detalle de productos
+  userId?: string; // Multi-user support
 }
 
 export interface StockMovement {

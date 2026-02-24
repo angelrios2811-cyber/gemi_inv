@@ -501,7 +501,10 @@ export async function seedDatabase() {
     }));
     
     for (const product of productsWithCalculations) {
-      await FirestoreService.createProduct(product);
+      await FirestoreService.createProduct({
+        ...product,
+        userId: 'admin' // Default userId for seed data
+      });
     }
 
     // **Insertar gastos**
@@ -513,7 +516,10 @@ export async function seedDatabase() {
     }));
     
     for (const expense of expensesWithCalculations) {
-      await FirestoreService.createExpense(expense);
+      await FirestoreService.createExpense({
+        ...expense,
+        userId: 'admin' // Default userId for seed data
+      });
     }
 
     // **Estadísticas**

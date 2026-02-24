@@ -15,6 +15,7 @@ export interface Product {
   stockAlert: number;
   minimumStock: number;
   unidadMedicion?: string; // Nueva: unidad de medición (opcional para compatibilidad)
+  userId: string; // ID del usuario que creó el producto
   createdAt: any; // Timestamp de Firebase
   updatedAt: any; // Timestamp de Firebase
   precioHistory: PriceHistory[];
@@ -39,6 +40,7 @@ export interface Expense {
   montoUSDT: number;
   tipo: string;
   fecha: string;
+  userId: string; // ID del usuario que creó el gasto
   createdAt: any; // Timestamp de Firebase
 }
 

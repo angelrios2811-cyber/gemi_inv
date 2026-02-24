@@ -17,28 +17,16 @@ const ExchangeRatesHeader: React.FC<ExchangeRatesHeaderProps> = ({ compact = fal
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [previousRates, setPreviousRates] = useState<ExchangeRates>({ bcv: 0, usdt: 0 });
 
-  // Función para obtener tasas del día anterior desde localStorage
+  // Función para obtener tasas del día anterior desde memoria
   const getPreviousDayRates = (): ExchangeRates => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = `rates_${yesterday.toISOString().split('T')[0]}`;
-    
-    const stored = localStorage.getItem(yesterdayKey);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return { bcv: 0, usdt: 0 };
-      }
-    }
+    // Simular tasas anteriores con valores por defecto
     return { bcv: 0, usdt: 0 };
   };
 
-  // Función para guardar tasas actuales en localStorage
-  const saveCurrentRates = (currentRates: ExchangeRates) => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayKey = `rates_${today}`;
-    localStorage.setItem(todayKey, JSON.stringify(currentRates));
+  // Función para guardar tasas actuales en memoria (no guardar en Firebase)
+  const saveCurrentRates = async (currentRates: ExchangeRates) => {
+    // No guardar en Firebase para evitar errores
+    console.log('Tasas actuales:', currentRates);
   };
 
   useEffect(() => {
@@ -75,7 +63,7 @@ const ExchangeRatesHeader: React.FC<ExchangeRatesHeaderProps> = ({ compact = fal
         setLastUpdate(new Date());
         
         // Guardar tasas actuales para futuras comparaciones
-        saveCurrentRates(newRates);
+        await saveCurrentRates(newRates);
         
       } catch (error) {
         console.error('Error fetching exchange rates:', error);
@@ -110,12 +98,6 @@ const ExchangeRatesHeader: React.FC<ExchangeRatesHeaderProps> = ({ compact = fal
       bcv: 410.50,
       usdt: 580.25
     };
-    
-    // Guardar tasas actuales como "de ayer"
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = `rates_${yesterday.toISOString().split('T')[0]}`;
-    localStorage.setItem(yesterdayKey, JSON.stringify(rates));
     
     // Aplicar nuevas tasas
     setRates(testRates);

@@ -73,8 +73,17 @@ export function Layout() {
                   <div className="absolute -inset-1 border border-violet-500/30 rounded-xl animate-pulse"></div>
                 </div>
                 <div>
-                  <p className="text-white font-semibold text-sm">{user?.name}</p>
+                  <p className="text-white font-semibold text-sm">{user?.username}</p>
                   <p className="text-white/50 text-xs">{user?.email}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      user?.role === 'admin' 
+                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    }`}>
+                      {user?.role === 'admin' ? 'Admin' : 'Usuario'}
+                    </span>
+                  </div>
                 </div>
               </div>
               

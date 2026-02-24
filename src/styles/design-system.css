@@ -542,6 +542,7 @@
   overflow-y: auto;
   scroll-behavior: smooth;
   scroll-padding-top: 0;
+  z-index: 9999;
 }
 
 /* Alternative modal container with lighter overlay */
@@ -612,6 +613,35 @@
     margin: 0.5rem;
     padding: 1rem;
     max-width: calc(100% - 1rem);
+  }
+}
+
+/* Admin Modal - Larger and responsive */
+.admin-modal-content {
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  width: 1200px !important;
+  overflow-y: auto !important;
+  padding: 2rem !important;
+  z-index: 10000;
+}
+
+/* Admin Modal Mobile */
+@media (max-width: 768px) {
+  .admin-modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 1.5rem !important;
+    margin: 0.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-modal-content {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    padding: 1rem !important;
+    margin: 0.25rem !important;
   }
 }
 

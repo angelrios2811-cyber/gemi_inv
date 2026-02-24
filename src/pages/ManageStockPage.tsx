@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, Plus, Minus, ArrowLeft, CheckCircle, Search, X } from 'lucide-react';
-import { useInventory } from '../store/useFirestoreStore';
+import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
 import { BCVService } from '../services/bcvService';
 import { AutomaticExpenseService } from '../services/automaticExpenseService';
 import { Link, useNavigate } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import UserFilter from '../components/UserFilter';
 import { handleCapitalization } from '../utils/textUtils';
 import { scrollToTop } from '../utils/scrollUtils';
 import { formatStockWithUnit, getUnitDisplay } from '../utils/stockUtils';
 import type { ProductItem } from '../types';
 
 export default function ManageStockPage() {
-  const { products, updateProduct, addProduct, loadProducts } = useInventory();
+  const { products, updateProduct, addProduct } = useMultiUserFirestoreStore();
   const navigate = useNavigate();
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [loadingRates, setLoadingRates] = useState(true);
@@ -23,6 +24,7 @@ export default function ManageStockPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [newProduct, setNewProduct] = useState<Partial<ProductItem>>({
     nombre: '',
     categoria: '',
@@ -34,13 +36,18 @@ export default function ManageStockPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  // Filter products based on search term
+  // Filter products based on search term and selected user
   const filteredProducts = products.filter(product => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       product.nombre.toLowerCase().includes(searchLower) ||
       product.categoria.toLowerCase().includes(searchLower)
     );
+    
+    // If admin and user is selected, filter by user
+    const matchesUser = !selectedUserId || product.userId === selectedUserId;
+    
+    return matchesSearch && matchesUser;
   });
 
   // Clear search function
@@ -62,8 +69,18 @@ export default function ManageStockPage() {
     };
     
     fetchData();
-    loadProducts();
-  }, [loadProducts]);
+    
+    // Load products based on selected user
+    if (selectedUserId) {
+      // Admin selected a specific user - load that user's products
+      const { loadUserProducts } = useMultiUserFirestoreStore.getState();
+      loadUserProducts(selectedUserId);
+    } else {
+      // Load all products (admin view)
+      const { loadAllProducts } = useMultiUserFirestoreStore.getState();
+      loadAllProducts();
+    }
+  }, [selectedUserId]);
 
   const calculateUSD = (priceBs: number) => {
     if (!priceBs || !rates.bcv) return 0;
@@ -269,9 +286,9 @@ export default function ManageStockPage() {
   };
 
   const getStockStatus = (product: any) => {
-    if (!product.stockAlert || !product.minimumStock) return 'normal';
+    if (!product.alertaBajoStock || !product.stockMinimo) return 'normal';
     if ((product.cantidad || 0) === 0) return 'critical';
-    if ((product.cantidad || 0) <= product.minimumStock) return 'warning';
+    if ((product.cantidad || 0) <= product.stockMinimo) return 'warning';
     return 'normal';
   };
 
@@ -307,6 +324,13 @@ export default function ManageStockPage() {
 
       {/* Exchange Rates Header */}
       <ExchangeRatesHeader compact={true} />
+
+      {/* User Filter - Solo visible para admins */}
+      <UserFilter 
+        selectedUserId={selectedUserId}
+        onUserChange={setSelectedUserId}
+        className="glass p-4"
+      />
 
       {/* Search Bar */}
       <div className="glass p-4">
@@ -368,9 +392,9 @@ export default function ManageStockPage() {
                   <div className={`text-sm font-bold ${getStockStatusColor(status)}`}>
                     Stock: {formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)}
                   </div>
-                  {product.stockAlert > 0 && (
+                  {product.alertaBajoStock && (
                     <div className="text-xs text-white/50 mt-1 bg-white/5 rounded px-2 py-1 inline-block">
-                      Mínimo: {product.minimumStock}
+                      Mínimo: {product.stockMinimo}
                     </div>
                   )}
                 </div>
@@ -592,21 +616,21 @@ export default function ManageStockPage() {
               </div>
 
               {/* Stock Alert */}
-              {status === 'critical' && product.stockAlert > 0 && product.minimumStock && (
+              {status === 'critical' && product.alertaBajoStock && product.stockMinimo && (
                 <div className="mt-3 flex items-center gap-2 p-3 bg-red-500/10 rounded-xl border border-red-500/20 backdrop-blur-sm">
                   <AlertTriangle size={18} className="text-red-400" />
                   <span className="text-sm text-red-200 font-medium">
-                    ¡Stock crítico! Quedan {formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: {formatStockWithUnit(product.minimumStock, product.unidadMedicion)})
+                    ¡Stock crítico! Quedan {formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: {formatStockWithUnit(product.stockMinimo, product.unidadMedicion)})
                   </span>
                 </div>
               )}
-              {status === 'warning' && product.stockAlert > 0 && product.minimumStock && (
+              {status === 'warning' && product.alertaBajoStock && product.stockMinimo && (
                 <div className="mt-3 flex items-center gap-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 backdrop-blur-sm">
                   <AlertTriangle size={18} className="text-amber-400" />
                   <span className="text-sm text-amber-200 font-medium">
                     {(product.cantidad || 0) === 0 
-                      ? `¡Stock crítico! Quedan ${formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: ${formatStockWithUnit(product.minimumStock, product.unidadMedicion)})`
-                      : `¡Stock en mínimo! Quedan ${formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: ${formatStockWithUnit(product.minimumStock, product.unidadMedicion)})`
+                      ? `¡Stock crítico! Quedan ${formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: ${formatStockWithUnit(product.stockMinimo, product.unidadMedicion)})`
+                      : `¡Stock en mínimo! Quedan ${formatStockWithUnit(product.cantidad || 0, product.unidadMedicion)} (mínimo: ${formatStockWithUnit(product.stockMinimo, product.unidadMedicion)})`
                     }
                   </span>
                 </div>

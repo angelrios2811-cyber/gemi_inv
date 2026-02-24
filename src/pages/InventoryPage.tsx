@@ -1,23 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Package, AlertTriangle, ArrowLeft, CheckCircle, Edit, DollarSign, Calendar, TrendingUp, TrendingDown, Minus, Trash2, Search, X } from 'lucide-react';
-import { useInventory } from '../store/useFirestoreStore';
+import { useEffect, useState } from 'react';
+import { Search, X, Edit, Trash2, TrendingUp, TrendingDown, Minus, DollarSign, Package, AlertTriangle, Calendar, ArrowLeft, CheckCircle } from 'lucide-react';
+import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
 import { BCVService } from '../services/bcvService';
-import { AutomaticExpenseService } from '../services/automaticExpenseService';
-import { handleCapitalization } from '../utils/textUtils';
+import { scrollToTop } from '../utils/scrollUtils';
+import { formatStockWithUnit } from '../utils/stockUtils';
 import { Link } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import UserFilter from '../components/UserFilter';
 import { adaptFirebaseToLocal } from '../utils/productAdapter';
-import { formatStockWithUnit, getUnitDisplay } from '../utils/stockUtils';
-import { scrollToTop } from '../utils/scrollUtils';
+import { getUnitDisplay } from '../utils/stockUtils';
+import { handleCapitalization } from '../utils/textUtils';
+import { AutomaticExpenseService } from '../services/automaticExpenseService';
 import type { ProductItem } from '../types';
 
 export function InventoryPage() {
   const { 
     products, 
-    loadProducts, 
     deleteProduct,
     updateProduct
-  } = useInventory();
+  } = useMultiUserFirestoreStore();
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
@@ -27,6 +28,7 @@ export function InventoryPage() {
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [loadingRates, setLoadingRates] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     nombre: '',
     categoria: '',
@@ -35,13 +37,18 @@ export function InventoryPage() {
     unidadMedicion: 'unid' // Nueva: unidad de medición por defecto
   });
 
-  // Filter products based on search term
+  // Filter products based on search term and selected user
   const filteredProducts = products.filter(product => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       product.nombre.toLowerCase().includes(searchLower) ||
       product.categoria.toLowerCase().includes(searchLower)
     );
+    
+    // If admin and user is selected, filter by user
+    const matchesUser = !selectedUserId || product.userId === selectedUserId;
+    
+    return matchesSearch && matchesUser;
   });
 
   // Clear search function
@@ -334,8 +341,18 @@ export function InventoryPage() {
     };
     
     fetchData();
-    loadProducts();
-  }, [loadProducts]);
+    
+    // Load products based on selected user
+    if (selectedUserId) {
+      // Admin selected a specific user - load that user's products
+      const { loadUserProducts } = useMultiUserFirestoreStore.getState();
+      loadUserProducts(selectedUserId);
+    } else {
+      // Load all products (admin view)
+      const { loadAllProducts } = useMultiUserFirestoreStore.getState();
+      loadAllProducts();
+    }
+  }, [selectedUserId]);
 
   const handleDelete = (product: any) => {
     scrollToTop();
@@ -411,8 +428,8 @@ export function InventoryPage() {
       await updateProduct(editingProduct.id, {
         nombre: editForm.nombre,
         categoria: editForm.categoria,
-        stockAlert: editForm.alertaBajoStock ? editForm.stockMinimo : 0,
-        minimumStock: editForm.stockMinimo,
+        alertaBajoStock: editForm.alertaBajoStock,
+        stockMinimo: editForm.stockMinimo,
         unidadMedicion: editForm.unidadMedicion
       });
       
@@ -454,9 +471,9 @@ export function InventoryPage() {
   };
 
   const getStockStatus = (product: any) => {
-    if (!product.stockAlert || !product.minimumStock) return 'normal';
+    if (!product.alertaBajoStock || !product.stockMinimo) return 'normal';
     if ((product.cantidad || 0) === 0) return 'critical';
-    if ((product.cantidad || 0) <= product.minimumStock) return 'warning';
+    if ((product.cantidad || 0) <= product.stockMinimo) return 'warning';
     return 'normal';
   };
 
@@ -470,10 +487,10 @@ export function InventoryPage() {
 
   const getShoppingListItems = () => {
     return products.filter(product => 
-      product.stockAlert > 0 && 
-      product.minimumStock && 
+      product.alertaBajoStock && 
+      product.stockMinimo && 
       product.cantidad !== undefined && 
-      product.cantidad <= product.minimumStock
+      product.cantidad <= product.stockMinimo
     ).sort((a, b) => {
       // Urgentes (stock = 0) primero
       const aIsUrgent = (a.cantidad || 0) === 0;
@@ -510,6 +527,13 @@ export function InventoryPage() {
 
       {/* Exchange Rates Header */}
       <ExchangeRatesHeader compact={true} />
+
+      {/* User Filter - Solo visible para admins */}
+      <UserFilter 
+        selectedUserId={selectedUserId}
+        onUserChange={setSelectedUserId}
+        className="glass p-4"
+      />
       
       {/* Stats */}
       <div className="glass p-4">
@@ -532,7 +556,7 @@ export function InventoryPage() {
           <div className="space-y-2">
             {shoppingListItems.map((item: any) => {
               const currentStock = item.cantidad || 0;
-              const minStock = item.minimumStock || 1;
+              const minStock = item.stockMinimo || 1;
               const targetStock = minStock + 1; // Mínimo + 1 para estar por encima del mínimo
               const neededQuantity = targetStock - currentStock;
               const isUrgent = currentStock === 0;
@@ -587,7 +611,7 @@ export function InventoryPage() {
                   <span className="text-red-300 font-bold">
                     {BCVService.formatBs(shoppingListItems.reduce((sum, item: any) => {
                       const currentStock = item.cantidad || 0;
-                      const minStock = item.minimumStock || 1;
+                      const minStock = item.stockMinimo || 1;
                       const targetStock = minStock + 1;
                       const neededQuantity = targetStock - currentStock;
                       
@@ -604,18 +628,18 @@ export function InventoryPage() {
               )}
               
               {/* Total Mínimo Stock */}
-              {shoppingListItems.some(item => (item.cantidad || 0) > 0 && (item.cantidad || 0) <= (item.minimumStock || 1)) && (
+              {shoppingListItems.some(item => (item.cantidad || 0) > 0 && (item.cantidad || 0) <= (item.stockMinimo || 1)) && (
                 <div className="flex justify-between items-center">
                   <span className="text-amber-400 font-medium">Total mínimo stock:</span>
                   <span className="text-amber-300 font-bold">
                     {BCVService.formatBs(shoppingListItems.reduce((sum, item: any) => {
                       const currentStock = item.cantidad || 0;
-                      const minStock = item.minimumStock || 1;
+                      const minStock = item.stockMinimo || 1;
                       const targetStock = minStock + 1;
                       const neededQuantity = targetStock - currentStock;
                       
                       // Solo sumar si está en mínimo stock pero no es urgente
-                      if (currentStock === 0 || currentStock > (item.minimumStock || 1)) return sum;
+                      if (currentStock === 0 || currentStock > (item.stockMinimo || 1)) return sum;
                       
                       if (item.precioUnitario && item.precioUnitario > 0) {
                         return sum + (item.precioUnitario * neededQuantity);
@@ -632,7 +656,7 @@ export function InventoryPage() {
                 <span className="text-white font-bold text-lg">
                   {BCVService.formatBs(shoppingListItems.reduce((sum, item: any) => {
                     const currentStock = item.cantidad || 0;
-                    const minStock = item.minimumStock || 1;
+                    const minStock = item.stockMinimo || 1;
                     const targetStock = minStock + 1;
                     const neededQuantity = targetStock - currentStock;
                     

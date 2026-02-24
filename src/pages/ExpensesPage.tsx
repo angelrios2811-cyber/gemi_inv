@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Filter, TrendingUp, DollarSign, Plus, X, ArrowLeft, CheckCircle, AlertTriangle, Trash2, ChevronDown, Calendar, Receipt, Search } from 'lucide-react';
-import { useInventory } from '../store/useFirestoreStore';
+import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
 import { BCVService } from '../services/bcvService';
 import { Link } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import UserFilter from '../components/UserFilter';
 import { scrollToTop } from '../utils/scrollUtils';
 import type { FilterOptions, ExpenseRecord } from '../types';
 
 export function ExpensesPage() {
-  const { expenses, loadExpenses, addExpense, deleteExpense } = useInventory();
+  const { expenses, loadExpenses, addExpense, deleteExpense } = useMultiUserFirestoreStore();
   const [filter, setFilter] = useState<FilterOptions>({ period: 'todos' });
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [deletingExpense, setDeletingExpense] = useState<ExpenseRecord | null>(null);
@@ -18,6 +19,7 @@ export function ExpensesPage() {
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Auto-hide timer for messages
   const startAutoHideTimer = () => {
@@ -179,11 +181,21 @@ export function ExpensesPage() {
         console.error('Error fetching BCV rate:', error);
         setRates({ bcv: 36.50, usdt: 38.20 }); // Fallback rates
       }
-      loadExpenses();
+      
+      // Load expenses based on selected user
+      if (selectedUserId) {
+        // Admin selected a specific user - load that user's expenses
+        const { loadUserExpenses } = useMultiUserFirestoreStore.getState();
+        loadUserExpenses(selectedUserId);
+      } else {
+        // Load all expenses (admin view)
+        const { loadAllExpenses } = useMultiUserFirestoreStore.getState();
+        loadAllExpenses();
+      }
     };
     
     fetchData();
-  }, [loadExpenses, filter]);
+  }, [selectedUserId, filter]);
 
   const handleAddExpense = async () => {
     if (!newExpense.descripcion || newExpense.montoBs <= 0) return;
@@ -305,6 +317,11 @@ export function ExpensesPage() {
     
     let filtered = [...expenses];
 
+    // Apply user filter first (if admin and user is selected)
+    if (selectedUserId) {
+      filtered = filtered.filter(expense => expense.userId === selectedUserId);
+    }
+
     // Apply search filter first
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
@@ -421,6 +438,13 @@ export function ExpensesPage() {
 
       {/* Exchange Rates Header */}
       <ExchangeRatesHeader compact={true} />
+
+      {/* User Filter - Solo visible para admins */}
+      <UserFilter 
+        selectedUserId={selectedUserId}
+        onUserChange={setSelectedUserId}
+        className="glass p-4"
+      />
       
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">

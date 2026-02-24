@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Package, TrendingUp, Receipt, Plus, AlertTriangle, Filter, ChevronDown, ShoppingBasket, Sparkles, Activity, Zap } from 'lucide-react';
-import { useInventory } from '../store/useFirestoreStore';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, Zap, Activity, BarChart3, Users, Package, TrendingUp, Receipt, AlertTriangle, ShoppingBasket, Filter, ChevronDown, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useMultiUserStore } from '../store/useMultiUserStore';
 import { BCVService } from '../services/bcvService';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
+import AdminModal from '../components/AdminModal';
 import { scrollToTop } from '../utils/scrollUtils';
 
 type FilterPeriod = 'todos' | 'hoy' | 'semanal' | 'quincenal' | 'mensual' | 'fecha';
@@ -15,12 +19,15 @@ interface FilterOptions {
 }
 
 export function HomePage() {
+  const { isAdmin } = useAuthStore();
   const { 
     products, 
     expenses, 
     loadProducts, 
     loadExpenses
-  } = useInventory();
+  } = useMultiUserFirestoreStore();
+  const { globalStats, loadGlobalStats } = useMultiUserStore();
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   const navigate = useNavigate();
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
@@ -40,6 +47,11 @@ export function HomePage() {
     loadProducts();
     loadExpenses();
     
+    // Load global stats if admin
+    if (isAdmin()) {
+      loadGlobalStats();
+    }
+    
     // Fetch exchange rates
     const fetchRates = async () => {
       try {
@@ -53,26 +65,26 @@ export function HomePage() {
     };
     
     fetchRates();
-  }, [loadProducts, loadExpenses]);
+  }, [loadProducts, loadExpenses, isAdmin, loadGlobalStats]);
 
   const getStockStatus = (product: any) => {
-    if (!product.stockAlert || !product.minimumStock) return 'normal';
+    if (!product.alertaBajoStock || !product.stockMinimo) return 'normal';
     if ((product.cantidad || 0) === 0) return 'critical';
-    if ((product.cantidad || 0) <= product.minimumStock) return 'warning';
+    if ((product.cantidad || 0) <= product.stockMinimo) return 'warning';
     return 'normal';
   };
 
   const getCriticalStockProducts = () => {
     return products.filter(product => {
       const status = getStockStatus(product);
-      return status === 'critical' && product.stockAlert && product.minimumStock;
+      return status === 'critical' && product.alertaBajoStock && product.stockMinimo;
     });
   };
 
   const getWarningStockProducts = () => {
     return products.filter(product => {
       const status = getStockStatus(product);
-      return status === 'warning' && product.stockAlert && product.minimumStock;
+      return status === 'warning' && product.alertaBajoStock && product.stockMinimo;
     });
   };
 
@@ -204,12 +216,6 @@ export function HomePage() {
               <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
               <span className="text-green-400 text-xs font-medium">v4.0.0</span>
             </div>
-            <Link
-              to="/settings"
-              className="p-2.5 rounded-xl glass hover:bg-white/10 transition-all duration-200 hover:scale-110 group"
-            >
-              <span className="text-xl group-hover:rotate-12 transition-transform inline-block">⚙️</span>
-            </Link>
           </div>
         </div>
         
@@ -219,6 +225,68 @@ export function HomePage() {
 
       {/* Exchange Rates Header */}
       <ExchangeRatesHeader compact={true} />
+      
+      {/* Admin Global Stats */}
+      {isAdmin() && globalStats && (
+        <div className="glass p-6 border border-violet-500/20 bg-violet-500/5 animate-slide-up" style={{ animationDelay: '25ms' }}>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+                <BarChart3 size={20} className="text-violet-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-violet-300">Estadísticas Globales</h3>
+                <p className="text-sm text-violet-200/70">Vista general del sistema</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAdminModal(true)}
+              className="p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 transition-all duration-200 hover:scale-105"
+              title="Ver panel de administración"
+            >
+              <BarChart3 size={16} className="text-violet-300" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+              <div className="flex items-center justify-between mb-1">
+                <Users size={16} className="text-violet-400/60" />
+                <span className="text-xl font-bold text-violet-300">{globalStats.totalUsers}</span>
+              </div>
+              <p className="text-xs text-violet-400/70">Usuarios</p>
+            </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+              <div className="flex items-center justify-between mb-1">
+                <Package size={16} className="text-violet-400/60" />
+                <span className="text-xl font-bold text-violet-300">{globalStats.totalProducts}</span>
+              </div>
+              <p className="text-xs text-violet-400/70">Productos</p>
+            </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+              <div className="flex items-center justify-between mb-1">
+                <TrendingUp size={16} className="text-violet-400/60" />
+                <span className="text-xl font-bold text-violet-300">
+                  ${globalStats.totalValue.toFixed(0)}
+                </span>
+              </div>
+              <p className="text-xs text-violet-400/70">Valor Total</p>
+            </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+              <div className="flex items-center justify-between mb-1">
+                <Receipt size={16} className="text-violet-400/60" />
+                <span className="text-xl font-bold text-violet-300">
+                  ${globalStats.totalExpenses.toFixed(0)}
+                </span>
+              </div>
+              <p className="text-xs text-violet-400/70">Gastos</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Modal */}
+      <AdminModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} />
       
       {/* Critical Stock Alerts */}
       {criticalProducts.length > 0 && (
@@ -341,7 +409,7 @@ export function HomePage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <AlertTriangle size={12} className="text-amber-400" />
-                          <span className="text-amber-300 font-medium">MÍNIMO: {product.minimumStock}</span>
+                          <span className="text-amber-300 font-medium">MÍNIMO: {product.stockMinimo}</span>
                         </div>
                       </div>
                     </div>
@@ -708,7 +776,7 @@ export function HomePage() {
           </div>
           <div className="flex flex-col gap-2">
             {products
-              .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0))
+              .sort((a, b) => (new Date(b.fechaCreacion || 0).getTime() || 0) - (new Date(a.fechaCreacion || 0).getTime() || 0))
               .slice(0, 4)
               .map((product) => (
               <Link

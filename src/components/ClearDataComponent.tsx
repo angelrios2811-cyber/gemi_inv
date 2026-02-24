@@ -1,5 +1,12 @@
 // 🧹 **COMPONENTE DE LIMPIEZA DE DATOS**
-// Componente para eliminar todos los registros de la base de datos
+// Componente para eliminar todos los registros de la base de datos (MANTIENIENDO USUARIOS)
+// 
+// IMPORTANTE: Esta función NO elimina usuarios, solo elimina:
+// - 📦 Productos
+// - 💳 Gastos  
+// - 💱 Tasas de cambio
+// 
+// Los usuarios y sus credenciales de autenticación se mantienen intactos
 
 import { useState } from 'react';
 import { Trash2, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
@@ -64,6 +71,12 @@ export function ClearDataComponent() {
             <li>📦 Todos los productos</li>
             <li>💳 Todos los gastos</li>
             <li>💱 Todas las tasas de cambio</li>
+          </ul>
+          <p className="mt-3 text-green-400 font-medium">✅ **NO se eliminarán:**</p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>👤 Usuarios registrados</li>
+            <li>🔐 Credenciales de autenticación</li>
+            <li>📊 Configuraciones del sistema</li>
           </ul>
           <p className="mt-2 text-red-400 font-medium">Esta acción no se puede deshacer</p>
         </div>

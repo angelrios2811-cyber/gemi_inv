@@ -2,8 +2,11 @@ import { Globe, Info, DollarSign, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { FirebaseTest } from '../components/FirebaseTest';
 import { ClearDataComponent } from '../components/ClearDataComponent';
+import { useAuthStore } from '../store/useAuthStore';
 
 export function SettingsPage() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -61,8 +64,8 @@ export function SettingsPage() {
           </div>
         </div>
 
-        {/* Clear Data Section */}
-        <ClearDataComponent />
+        {/* Clear Data Section - Solo para administradores */}
+        {isAdmin && <ClearDataComponent />}
       </div>
     </div>
   );
