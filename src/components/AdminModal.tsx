@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Package, DollarSign, TrendingUp, UserPlus, Settings, Edit, Trash2, X } from 'lucide-react';
+import { Users, Package, DollarSign, TrendingUp, UserPlus, Settings, Edit, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useMultiUserStore } from '../store/useMultiUserStore';
 import type { User } from '../types/auth';
@@ -74,7 +74,10 @@ export default function AdminModal({ isOpen, onClose }: AdminModalProps) {
       }, 3000);
     } catch (error: any) {
       console.error('Error creating user:', error);
-      setErrorMessage('Error al crear usuario. Inténtalo de nuevo.');
+      
+      // Mostrar el mensaje de error específico
+      const errorMessage = error.message || 'Error al crear usuario. Inténtalo de nuevo.';
+      setErrorMessage(errorMessage);
       setTimeout(() => setErrorMessage(''), 5000);
     }
   };
@@ -99,7 +102,10 @@ export default function AdminModal({ isOpen, onClose }: AdminModalProps) {
       }, 3000);
     } catch (error: any) {
       console.error('Error updating user:', error);
-      setErrorMessage('Error al actualizar usuario. Inténtalo de nuevo.');
+      
+      // Mostrar el mensaje de error específico
+      const errorMessage = error.message || 'Error al actualizar usuario. Inténtalo de nuevo.';
+      setErrorMessage(errorMessage);
       setTimeout(() => setErrorMessage(''), 5000);
     }
   };
@@ -130,7 +136,10 @@ export default function AdminModal({ isOpen, onClose }: AdminModalProps) {
       }, 3000);
     } catch (error: any) {
       console.error('Error changing password:', error);
-      setErrorMessage('Error al cambiar contraseña. Verifica los datos e inténtalo de nuevo.');
+      
+      // Mostrar el mensaje de error específico
+      const errorMessage = error.message || 'Error al cambiar contraseña. Verifica los datos e inténtalo de nuevo.';
+      setErrorMessage(errorMessage);
       setTimeout(() => setErrorMessage(''), 5000);
     }
   };
@@ -380,15 +389,27 @@ export default function AdminModal({ isOpen, onClose }: AdminModalProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">Contraseña</label>
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      Contraseña <span className="text-white/50 text-xs">(mínimo 6 dígitos)</span>
+                    </label>
                     <input
                       type="password"
                       value={newUserForm.password}
                       onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                      className="glass-input w-full px-4 py-3 text-white placeholder-white/40 text-sm"
+                      className={`glass-input w-full px-4 py-3 text-white placeholder-white/40 text-sm ${
+                        newUserForm.password.length > 0 && newUserForm.password.length < 6
+                          ? 'border-red-400/50 focus:border-red-400/50'
+                          : 'border-white/20 focus:border-violet-400/50'
+                      }`}
                       placeholder="•••••••••••"
                       required
                     />
+                    {newUserForm.password.length > 0 && newUserForm.password.length < 6 && (
+                      <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                        <AlertTriangle size={12} />
+                        La contraseña debe tener mínimo 6 dígitos
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-white/70 mb-2">Rol</label>
@@ -600,15 +621,27 @@ export default function AdminModal({ isOpen, onClose }: AdminModalProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">Nueva Contraseña</label>
+                    <label className="block text-sm font-medium text-white/70 mb-2">
+                      Nueva Contraseña <span className="text-white/50 text-xs">(mínimo 6 dígitos)</span>
+                    </label>
                     <input
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                      className="glass-input w-full px-4 py-3 text-white placeholder-white/40 text-sm"
+                      className={`glass-input w-full px-4 py-3 text-white placeholder-white/40 text-sm ${
+                        passwordForm.newPassword.length > 0 && passwordForm.newPassword.length < 6
+                          ? 'border-red-400/50 focus:border-red-400/50'
+                          : 'border-white/20 focus:border-violet-400/50'
+                      }`}
                       placeholder="••••••••••"
                       required
                     />
+                    {passwordForm.newPassword.length > 0 && passwordForm.newPassword.length < 6 && (
+                      <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                        <AlertTriangle size={12} />
+                        La contraseña debe tener mínimo 6 dígitos
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-white/70 mb-2">Confirmar Nueva Contraseña</label>

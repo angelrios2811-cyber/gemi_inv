@@ -22,9 +22,9 @@ export function HomePage() {
   const { isAdmin } = useAuthStore();
   const { 
     products, 
-    expenses, 
-    loadProducts, 
-    loadExpenses
+    expenses,
+    loadCurrentUserProducts, 
+    loadCurrentUserExpenses
   } = useMultiUserFirestoreStore();
   const { globalStats, loadGlobalStats } = useMultiUserStore();
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -44,10 +44,12 @@ export function HomePage() {
 
   useEffect(() => {
     setIsAnimating(true);
-    loadProducts();
-    loadExpenses();
+    // Always load current user's products and expenses (even for admin)
+    // This ensures the normal stats show personal data, not global data
+    loadCurrentUserProducts();
+    loadCurrentUserExpenses();
     
-    // Load global stats if admin
+    // Load global stats if admin (for the separate Global Stats panel)
     if (isAdmin()) {
       loadGlobalStats();
     }
@@ -65,7 +67,7 @@ export function HomePage() {
     };
     
     fetchRates();
-  }, [loadProducts, loadExpenses, isAdmin, loadGlobalStats]);
+  }, [loadCurrentUserProducts, loadCurrentUserExpenses, isAdmin, loadGlobalStats]);
 
   const getStockStatus = (product: any) => {
     if (!product.alertaBajoStock || !product.stockMinimo) return 'normal';
@@ -267,7 +269,7 @@ export function HomePage() {
               <div className="flex items-center justify-between mb-1">
                 <TrendingUp size={16} className="text-violet-400/60" />
                 <span className="text-xl font-bold text-violet-300">
-                  ${globalStats.totalValue.toFixed(0)}
+                  {BCVService.formatBs(globalStats.totalValue)}
                 </span>
               </div>
               <p className="text-xs text-violet-400/70">Valor Total</p>
@@ -276,7 +278,7 @@ export function HomePage() {
               <div className="flex items-center justify-between mb-1">
                 <Receipt size={16} className="text-violet-400/60" />
                 <span className="text-xl font-bold text-violet-300">
-                  ${globalStats.totalExpenses.toFixed(0)}
+                  {BCVService.formatBs(globalStats.totalExpenses)}
                 </span>
               </div>
               <p className="text-xs text-violet-400/70">Gastos</p>

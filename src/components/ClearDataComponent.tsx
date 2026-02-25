@@ -149,11 +149,11 @@ export function ClearDataComponent() {
           <div className="p-4 bg-white/5 rounded-lg border border-white/10">
             <h4 className="text-white font-medium mb-3">📊 Resumen de Eliminación:</h4>
             <div className="space-y-2 text-sm text-white/80">
-              <div>📦 Productos eliminados: <span className="text-red-400">{result.deletedProducts}</span></div>
-              <div>💳 Gastos eliminados: <span className="text-red-400">{result.deletedExpenses}</span></div>
-              <div>💱 Tasas eliminadas: <span className="text-red-400">{result.deletedRates}</span></div>
+              <div>📦 Productos eliminados: <span className="text-red-400">{result.deleted.products}</span></div>
+              <div>💳 Gastos eliminados: <span className="text-red-400">{result.deleted.expenses}</span></div>
+              <div>💱 Tasas eliminadas: <span className="text-red-400">{result.deleted.rates}</span></div>
               <div className="pt-2 border-t border-white/10">
-                📊 Total eliminados: <span className="text-red-400 font-bold">{result.totalDeleted}</span>
+                📊 Total eliminados: <span className="text-red-400 font-bold">{result.deleted.total}</span>
               </div>
             </div>
           </div>

@@ -70,28 +70,37 @@ export function ExpensesPage() {
 
   // Color system for expense types
   const tipoColors = {
+    stock: { 
+      color: 'teal', 
+      emoji: '📈',
+      label: 'Stock/Inventario',
+      bg: 'bg-teal-500/20',
+      text: 'text-teal-300',
+      border: 'border-teal-500/30',
+      gradient: 'bg-gradient-to-b from-teal-400 to-teal-600'
+    },
     compra: { 
       color: 'emerald', 
       emoji: '🛒',
-      label: 'Compra',
+      label: 'Compras',
       bg: 'bg-emerald-500/20',
       text: 'text-emerald-300',
       border: 'border-emerald-500/30',
       gradient: 'bg-gradient-to-b from-emerald-400 to-emerald-600'
     },
     gasto: { 
-      color: 'amber', 
+      color: 'violet', 
       emoji: '💳',
-      label: 'Gasto',
-      bg: 'bg-amber-500/20',
-      text: 'text-amber-300',
-      border: 'border-amber-500/30',
-      gradient: 'bg-gradient-to-b from-amber-400 to-amber-600'
+      label: 'Gastos Personales',
+      bg: 'bg-violet-500/20',
+      text: 'text-violet-300',
+      border: 'border-violet-500/30',
+      gradient: 'bg-gradient-to-b from-violet-400 to-violet-600'
     },
     salida: { 
       color: 'rose', 
       emoji: '🍽️',
-      label: 'Salida',
+      label: 'Restaurantes',
       bg: 'bg-rose-500/20',
       text: 'text-rose-300',
       border: 'border-rose-500/30',
@@ -117,8 +126,8 @@ export function ExpensesPage() {
     },
     servicio: { 
       color: 'cyan', 
-      emoji: '⚙️',
-      label: 'Servicio',
+      emoji: '📱',
+      label: 'Servicios',
       bg: 'bg-cyan-500/20',
       text: 'text-cyan-300',
       border: 'border-cyan-500/30',
@@ -162,14 +171,12 @@ export function ExpensesPage() {
     }
   } as const;
 
-  const [newExpense, setNewExpense] = useState<Omit<ExpenseRecord, 'id' | 'fecha' | 'montoUSD' | 'montoUSDT' | 'bcvRate' | 'usdtRate'>>(
-    {
+  const [newExpense, setNewExpense] = useState<Partial<ExpenseRecord>>({
       descripcion: '',
-      montoBs: 0,
+      montoBs: undefined,
       categoria: '',
-      tipo: 'gasto' as 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros',
-    }
-  );
+      tipo: 'gasto' as 'stock' | 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros',
+    });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -188,9 +195,9 @@ export function ExpensesPage() {
         const { loadUserExpenses } = useMultiUserFirestoreStore.getState();
         loadUserExpenses(selectedUserId);
       } else {
-        // Load all expenses (admin view)
-        const { loadAllExpenses } = useMultiUserFirestoreStore.getState();
-        loadAllExpenses();
+        // Load current user's expenses (not all expenses)
+        const { loadExpenses } = useMultiUserFirestoreStore.getState();
+        loadExpenses();
       }
     };
     
@@ -198,15 +205,18 @@ export function ExpensesPage() {
   }, [selectedUserId, filter]);
 
   const handleAddExpense = async () => {
-    if (!newExpense.descripcion || newExpense.montoBs <= 0) return;
+    if (!newExpense.descripcion || (newExpense.montoBs || 0) <= 0) return;
     
     setLoading(true);
     
     try {
       const expense: Omit<ExpenseRecord, 'id'> = {
-        ...newExpense,
-        montoUSD: BCVService.convertBsToUSD(newExpense.montoBs, rates.bcv),
-        montoUSDT: rates.bcv ? newExpense.montoBs / rates.bcv : 0,
+        descripcion: newExpense.descripcion,
+        montoBs: newExpense.montoBs || 0,
+        categoria: newExpense.categoria || '',
+        tipo: newExpense.tipo || 'gasto',
+        montoUSD: BCVService.convertBsToUSD(newExpense.montoBs || 0, rates.bcv),
+        montoUSDT: rates.bcv ? (newExpense.montoBs || 0) / rates.bcv : 0,
         fecha: new Date().toISOString().split('T')[0],
         bcvRate: rates.bcv,
         usdtRate: rates.bcv, // Using BCV rate as fallback for USDT
@@ -223,9 +233,9 @@ export function ExpensesPage() {
       // Reset form
       setNewExpense({
         descripcion: '',
-        montoBs: 0,
+        montoBs: undefined,
         categoria: '',
-        tipo: 'gasto' as ('compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros'),
+        tipo: 'gasto' as 'stock' | 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros',
       });
       setShowAddExpense(false);
       loadExpenses();
@@ -617,16 +627,17 @@ export function ExpensesPage() {
             }}
           >
             <option value="">Todos los tipos</option>
-            <option value="compra">Compra</option>
-            <option value="gasto">Gasto personal</option>
-            <option value="salida">Salida a comer</option>
-            <option value="entretenimiento">Entretenimiento</option>
-            <option value="transporte">Transporte</option>
-            <option value="servicio">Servicio</option>
-            <option value="salud">Salud</option>
-            <option value="educacion">Educación</option>
-            <option value="hogar">Hogar</option>
-            <option value="otros">Otros</option>
+            <option value="stock">📈 Stock/Inventario</option>
+            <option value="compra">🛒 Compras</option>
+            <option value="gasto">💳 Gastos Personales</option>
+            <option value="salida">🍽️ Restaurantes</option>
+            <option value="entretenimiento">🎬 Entretenimiento</option>
+            <option value="transporte">🚗 Transporte</option>
+            <option value="servicio">📱 Servicios</option>
+            <option value="salud">🏥 Salud</option>
+            <option value="educacion">📚 Educación</option>
+            <option value="hogar">🏠 Hogar</option>
+            <option value="otros">📦 Otros</option>
           </select>
         </div>
 
@@ -858,7 +869,7 @@ export function ExpensesPage() {
                   <input
                     type="number"
                     value={newExpense.montoBs || ''}
-                    onChange={(e) => setNewExpense({ ...newExpense, montoBs: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setNewExpense({ ...newExpense, montoBs: e.target.value ? parseFloat(e.target.value) : undefined })}
                     placeholder="48000"
                     step="0.01"
                     className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-violet-400/50"
@@ -880,21 +891,22 @@ export function ExpensesPage() {
                       backgroundSize: '1rem'
                     }}
                   >
-                    <option value="gasto">Gasto personal</option>
-                    <option value="compra">Compra</option>
-                    <option value="salida">Salida a comer</option>
-                    <option value="entretenimiento">Entretenimiento</option>
-                    <option value="transporte">Transporte</option>
-                    <option value="servicio">Servicio</option>
-                    <option value="salud">Salud</option>
-                    <option value="educacion">Educación</option>
-                    <option value="hogar">Hogar</option>
-                    <option value="otros">Otros</option>
+                    <option value="gasto">💳 Gastos Personales</option>
+                    <option value="stock">📈 Stock/Inventario</option>
+                    <option value="compra">🛒 Compras</option>
+                    <option value="salida">🍽️ Restaurantes</option>
+                    <option value="entretenimiento">🎬 Entretenimiento</option>
+                    <option value="transporte">🚗 Transporte</option>
+                    <option value="servicio">📱 Servicios</option>
+                    <option value="salud">🏥 Salud</option>
+                    <option value="educacion">📚 Educación</option>
+                    <option value="hogar">🏠 Hogar</option>
+                    <option value="otros">📦 Otros</option>
                   </select>
                 </div>
               </div>
 
-              {newExpense.montoBs > 0 && (
+              {newExpense.montoBs && newExpense.montoBs > 0 && (
                 <div className="glass p-3 border border-violet-500/20">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-white/40">Equivalente en USD</span>
@@ -914,7 +926,7 @@ export function ExpensesPage() {
                 </button>
                 <button
                   onClick={handleAddExpense}
-                  disabled={!newExpense.descripcion || newExpense.montoBs <= 0 || loading}
+                  disabled={!newExpense.descripcion || (newExpense.montoBs || 0) <= 0 || loading}
                   className="btn-primary flex-1 aura-glow disabled:opacity-50 disabled:cursor-not-allowed py-2.5"
                 >
                   {loading ? 'Guardando...' : 'Agregar'}

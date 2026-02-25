@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, Plus, Minus, ArrowLeft, CheckCircle, Search, X } from 'lucide-react';
 import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { BCVService } from '../services/bcvService';
 import { AutomaticExpenseService } from '../services/automaticExpenseService';
+import { addNumbers } from '../utils/decimalUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import ExchangeRatesHeader from '../components/ExchangeRatesHeader';
 import UserFilter from '../components/UserFilter';
@@ -13,6 +15,7 @@ import type { ProductItem } from '../types';
 
 export default function ManageStockPage() {
   const { products, updateProduct, addProduct } = useMultiUserFirestoreStore();
+  const { user: currentUser } = useAuthStore(); // Obtener usuario actual
   const navigate = useNavigate();
   const [rates, setRates] = useState({ bcv: 0, usdt: 0 });
   const [loadingRates, setLoadingRates] = useState(true);
@@ -76,9 +79,9 @@ export default function ManageStockPage() {
       const { loadUserProducts } = useMultiUserFirestoreStore.getState();
       loadUserProducts(selectedUserId);
     } else {
-      // Load all products (admin view)
-      const { loadAllProducts } = useMultiUserFirestoreStore.getState();
-      loadAllProducts();
+      // Load current user's products (not all products)
+      const { loadProducts } = useMultiUserFirestoreStore.getState();
+      loadProducts();
     }
   }, [selectedUserId]);
 
@@ -99,26 +102,34 @@ export default function ManageStockPage() {
 
       // Update price if provided
       if (newPrice && parseFloat(newPrice) > 0) {
-        updatedProduct.precioUnitario = parseFloat(newPrice);
-        updatedProduct.ultimaActualizacion = new Date().toISOString();
+        const newPrecioUnitario = parseFloat(newPrice);
+        const oldPrecioUnitario = selectedProduct.precioUnitario || 0;
         
-        // Add to price history
-        const precioHistorico = selectedProduct.precioHistorico || [];
-        precioHistorico.push({
-          fecha: new Date().toISOString(),
-          precioUnitario: parseFloat(newPrice),
-          precioUSD: calculateUSD(parseFloat(newPrice)),
-          tasaBCV: rates.bcv,
-          tasaUSDT: rates.usdt,
-          variacionUSD: 0 // Will be calculated when displaying
-        });
-        updatedProduct.precioHistorico = precioHistorico;
+        // Solo agregar al historial si el precio realmente cambió
+        if (newPrecioUnitario !== oldPrecioUnitario) {
+          // Crear nueva entrada para el historial
+          const newEntry = {
+            fecha: new Date().toISOString(),
+            precioUnitario: newPrecioUnitario,
+            precioUSD: BCVService.convertBsToUSD(newPrecioUnitario, rates.bcv),
+            tasaBCV: rates.bcv,
+            tasaUSDT: rates.usdt
+          };
+          
+          // Mantener el historial existente y agregar la nueva entrada
+          const precioHistorico = selectedProduct.precioHistorico || [];
+          precioHistorico.push(newEntry);
+          updatedProduct.precioHistorico = precioHistorico;
+        }
+        
+        updatedProduct.precioUnitario = newPrecioUnitario;
+        updatedProduct.ultimaActualizacion = new Date().toISOString();
         
         // Update current rates and calculated values
         updatedProduct.tasaBCV = rates.bcv;
         updatedProduct.tasaUSDT = rates.usdt;
-        updatedProduct.precioUSD = calculateUSD(parseFloat(newPrice));
-        updatedProduct.precioUSDT = rates.usdt > 0 ? parseFloat(newPrice) / rates.usdt : 0;
+        updatedProduct.precioUSD = calculateUSD(newPrecioUnitario);
+        updatedProduct.precioUSDT = rates.usdt > 0 ? newPrecioUnitario / rates.usdt : 0;
       }
 
       await updateProduct(selectedProduct.id, updatedProduct);
@@ -141,7 +152,7 @@ export default function ManageStockPage() {
             // Prepare new data
             const newData = {
               ...finalProduct,
-              cantidad: (selectedProduct.cantidad || 0) + stockChange,
+              cantidad: addNumbers(selectedProduct.cantidad || 0, stockChange, 3),
               precioUnitario: newPrice ? parseFloat(newPrice) : (selectedProduct.precioUnitario || 0)
             };
             
@@ -149,7 +160,8 @@ export default function ManageStockPage() {
             await AutomaticExpenseService.analyzeProductChanges(
               selectedProduct.id,
               previousData,
-              newData
+              newData,
+              currentUser?.id || 'admin' // Usar el ID del usuario actual
             );
           }
         } catch (expenseError) {
@@ -236,7 +248,8 @@ export default function ManageStockPage() {
             previousPrice: 0,
             newPrice: newProduct.precioUnitario || 0,
             unidadMedicion: newProduct.unidadMedicion || 'unid',
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            userId: currentUser?.id || 'admin' // Agregar el userId del usuario actual
           };
           
           await AutomaticExpenseService.createExpenseFromStockMovement(movementData);

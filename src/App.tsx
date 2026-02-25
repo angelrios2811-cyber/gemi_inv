@@ -12,22 +12,28 @@ import { SettingsPage } from './pages/SettingsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { initializeAdminUser } from './utils/initAdminUser';
 import { clearAllLocalStorage } from './utils/clearLocalStorage';
+import './utils/debugAuth'; // Importar para que esté disponible globalmente
+import AuthService from './services/authService'; // Importar AuthService
 
 function App() {
   // Inicializar usuario admin al cargar la aplicación (solo una vez)
   useEffect(() => {
-    const initAdmin = async () => {
+    const initApp = async () => {
       try {
+        // Inicializar sesión desde sessionStorage
+        AuthService.initializeSession();
+        
         // Limpiar localStorage para forzar uso de Firebase
         clearAllLocalStorage();
         
         await initializeAdminUser();
+        
       } catch (error) {
-        console.error('Error inicializando usuario admin:', error);
+        console.error('Error inicializando aplicación:', error);
       }
     };
     
-    initAdmin();
+    initApp();
   }, []);
 
   return (

@@ -3,6 +3,7 @@
 
 import { FirestoreService } from '../firebase/firestoreService';
 import { BCVService } from './bcvService';
+import { subtractNumbers, multiplyNumbers, formatNumber } from '../utils/decimalUtils';
 
 export interface StockMovementData {
   productId: string;
@@ -14,6 +15,7 @@ export interface StockMovementData {
   newPrice: number;
   unidadMedicion: string;
   timestamp: number;
+  userId: string; // Agregar userId para saber quién hizo la operación
 }
 
 export class AutomaticExpenseService {
@@ -29,7 +31,7 @@ export class AutomaticExpenseService {
       let expenseCategory = movementData.category;
       
       // Calcular el monto total: costo de compra
-      const quantityAdded = movementData.newQuantity - movementData.previousQuantity;
+      const quantityAdded = subtractNumbers(movementData.newQuantity, movementData.previousQuantity, 3);
       
       // Solo crear gastos si hay aumento de stock
       if (quantityAdded <= 0) {
@@ -37,14 +39,14 @@ export class AutomaticExpenseService {
       }
       
       // Costo de la compra nueva (solo lo que realmente compraste)
-      const purchaseCost = quantityAdded * movementData.newPrice;
+      const purchaseCost = multiplyNumbers(quantityAdded, movementData.newPrice, 2);
       
       // NO incluir ajustes de precio - solo cargar por la compra real
       // El ajuste de precio no es un gasto real, solo una revalorización del inventario
       expenseAmount = purchaseCost;
       
       // Si hay aumento de stock (con o sin cambio de precio)
-      expenseDescription = `Compra: ${movementData.productName} (+${quantityAdded} ${movementData.unidadMedicion}.)`;
+      expenseDescription = `Compra: ${movementData.productName} (+${formatNumber(quantityAdded, 3)} ${movementData.unidadMedicion}.)`;
       expenseCategory = 'Compras';
       
       // Solo crear gasto si el monto es mayor a 0
@@ -59,14 +61,14 @@ export class AutomaticExpenseService {
         montoBs: expenseAmount,
         montoUSD: bcvRate > 0 ? expenseAmount / bcvRate : 0,
         montoUSDT: usdtRate > 0 ? expenseAmount / usdtRate : 0,
-        tipo: 'compra',
+        tipo: 'stock',
         fecha: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       };
       
       await FirestoreService.createExpense({
         ...expenseRecord,
-        userId: 'admin' // Default userId for automatic expenses
+        userId: movementData.userId // Usar el userId del usuario que hizo la operación
       });
       
     } catch (error) {
@@ -81,7 +83,8 @@ export class AutomaticExpenseService {
   static async analyzeProductChanges(
     productId: string,
     previousData: any,
-    newData: any
+    newData: any,
+    userId: string // Agregar userId
   ): Promise<void> {
     try {
       const quantityIncreased = (newData.cantidad || 0) > (previousData.cantidad || 0);
@@ -100,7 +103,8 @@ export class AutomaticExpenseService {
         previousPrice: previousData.precioUnitario || 0,
         newPrice: newData.precioUnitario || 0,
         unidadMedicion: newData.unidadMedicion || previousData.unidadMedicion || 'unid',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        userId: userId // Agregar el userId
       };
       
       await this.createExpenseFromStockMovement(movementData);

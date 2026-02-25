@@ -25,6 +25,8 @@ interface MultiUserInventoryState {
   // Load actions
   loadProducts: () => Promise<void>;
   loadExpenses: () => Promise<void>;
+  loadCurrentUserProducts: () => Promise<void>;
+  loadCurrentUserExpenses: () => Promise<void>;
   
   // Admin actions
   loadAllProducts: () => Promise<void>;
@@ -78,6 +80,7 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
       set({ loading: true, error: null });
       try {
         await MultiUserService.updateProduct(id, updates);
+        
         await get().loadProducts();
         
         // Update global stats if user is admin
@@ -89,6 +92,7 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
       } catch (error) {
         set({ error: 'Error al actualizar producto' });
         console.error('Error updating product:', error);
+        throw error;
       } finally {
         set({ loading: false });
       }
@@ -201,6 +205,7 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
     // Load actions
     loadProducts: async () => {
       const { user } = useAuthStore.getState();
+      const { isAdmin } = useAuthStore.getState();
       
       if (!user) {
         set({ products: [], loading: false });
@@ -209,7 +214,6 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
 
       set({ loading: true, error: null });
       try {
-        const { isAdmin } = useAuthStore.getState();
         if (isAdmin()) {
           // Admin loads all products
           const products = await MultiUserService.getAllProducts();
@@ -225,8 +229,29 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
       }
     },
 
+    // Always load current user's products (even if admin)
+    loadCurrentUserProducts: async () => {
+      const { user } = useAuthStore.getState();
+      
+      if (!user) {
+        set({ products: [], loading: false });
+        return;
+      }
+
+      set({ loading: true, error: null });
+      try {
+        // Always load only the current user's products, regardless of role
+        const products = await MultiUserService.getUserProducts(user.id);
+        set({ products, loading: false });
+      } catch (error) {
+        set({ error: 'Error al cargar productos del usuario', loading: false });
+        console.error('Error loading current user products:', error);
+      }
+    },
+
     loadExpenses: async () => {
       const { user } = useAuthStore.getState();
+      const { isAdmin } = useAuthStore.getState();
       
       if (!user) {
         set({ expenses: [], loading: false });
@@ -235,7 +260,6 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
 
       set({ loading: true, error: null });
       try {
-        const { isAdmin } = useAuthStore.getState();
         if (isAdmin()) {
           // Admin loads all expenses
           const expenses = await MultiUserService.getAllExpenses();
@@ -248,6 +272,26 @@ export const useMultiUserFirestoreStore = create<MultiUserInventoryState>((set, 
       } catch (error) {
         set({ error: 'Error al cargar gastos', loading: false });
         console.error('Error loading expenses:', error);
+      }
+    },
+
+    // Always load current user's expenses (even if admin)
+    loadCurrentUserExpenses: async () => {
+      const { user } = useAuthStore.getState();
+      
+      if (!user) {
+        set({ expenses: [], loading: false });
+        return;
+      }
+
+      set({ loading: true, error: null });
+      try {
+        // Always load only the current user's expenses, regardless of role
+        const expenses = await MultiUserService.getUserExpenses(user.id);
+        set({ expenses, loading: false });
+      } catch (error) {
+        set({ error: 'Error al cargar gastos del usuario', loading: false });
+        console.error('Error loading current user expenses:', error);
       }
     },
 

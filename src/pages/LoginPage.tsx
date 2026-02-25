@@ -241,10 +241,10 @@ export function LoginPage() {
               {/* Error Message */}
               {error && (
                 <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 animate-slide-up">
-                  <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2">
+                  <div className="text-red-400 text-sm text-center flex items-center justify-center gap-2">
                     <div className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse"></div>
                     {error}
-                  </p>
+                  </div>
                 </div>
               )}
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Minus, AlertTriangle, Package } from 'lucide-react';
-import { useInventory } from '../store/useFirestoreStore';
+import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
 
 interface ProductStock {
   name: string;
@@ -11,7 +11,7 @@ interface ProductStock {
 
 export function RemoveInventoryPage() {
   const navigate = useNavigate();
-  const { products, loadProducts, updateProduct } = useInventory();
+  const { products, loadProducts, updateProduct } = useMultiUserFirestoreStore();
   const [productStock, setProductStock] = useState<ProductStock[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [quantityToRemove, setQuantityToRemove] = useState(1);
@@ -24,7 +24,7 @@ export function RemoveInventoryPage() {
     // Calculate stock from products
     const stock: Record<string, ProductStock> = {};
     
-    products.forEach(product => {
+    products.forEach((product: any) => {
       if (!stock[product.nombre]) {
         stock[product.nombre] = {
           name: product.nombre,
@@ -47,12 +47,11 @@ export function RemoveInventoryPage() {
     if (!product || product.quantity < quantityToRemove) return;
     
     // Update product quantity
-    const targetProduct = products.find(p => p.nombre === selectedProduct);
+    const targetProduct = products.find((p: any) => p.nombre === selectedProduct);
     if (targetProduct) {
       // Update the product in the store
       await updateProduct(targetProduct.id, {
-        cantidad: (targetProduct.cantidad || 0) - quantityToRemove,
-        updatedAt: firebase.firestore.Timestamp.now()
+        cantidad: (targetProduct.cantidad || 0) - quantityToRemove
       });
       
       // Reset form

@@ -2,8 +2,6 @@
 // Función para limpiar todos los datos locales y forzar uso de Firebase
 
 export function clearAllLocalStorage() {
-  console.log('🧹 Limpiando todos los datos de localStorage...');
-  
   // Eliminar productos locales
   localStorage.removeItem('products');
   
@@ -21,9 +19,6 @@ export function clearAllLocalStorage() {
       localStorage.removeItem(key);
     }
   });
-  
-  console.log('✅ LocalStorage limpiado completamente');
-  console.log('📱 Ahora todos los datos se guardarán en Firebase');
 }
 
 export default clearAllLocalStorage;

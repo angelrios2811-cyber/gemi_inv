@@ -2,21 +2,30 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { checkAuth } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Simulate checking authentication
-    const timer = setTimeout(() => {
-      if (!isAuthenticated) {
-        window.location.href = '/login';
-      } else {
-        setIsChecking(false);
-      }
-    }, 100);
+    // Verificar autenticación al montar el componente
+    const verifyAuth = () => {
+      checkAuth();
+      
+      // Pequeña espera para asegurar que la verificación se complete
+      const timer = setTimeout(() => {
+        const currentState = useAuthStore.getState();
+        
+        if (!currentState.isAuthenticated) {
+          window.location.href = '/login';
+        } else {
+          setIsChecking(false);
+        }
+      }, 100);
 
-    return () => clearTimeout(timer);
-  }, [isAuthenticated]);
+      return () => clearTimeout(timer);
+    };
+
+    verifyAuth();
+  }, [checkAuth]);
 
   if (isChecking) {
     return (

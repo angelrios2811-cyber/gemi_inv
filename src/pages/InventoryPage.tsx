@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, X, Edit, Trash2, TrendingUp, TrendingDown, Minus, DollarSign, Package, AlertTriangle, Calendar, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useMultiUserFirestoreStore } from '../store/useMultiUserFirestoreStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { BCVService } from '../services/bcvService';
 import { scrollToTop } from '../utils/scrollUtils';
 import { formatStockWithUnit } from '../utils/stockUtils';
@@ -19,6 +20,8 @@ export function InventoryPage() {
     deleteProduct,
     updateProduct
   } = useMultiUserFirestoreStore();
+  
+  const { user: currentUser } = useAuthStore(); // Obtener usuario actual
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
@@ -60,7 +63,13 @@ export function InventoryPage() {
   const PriceHistoryChart = ({ product }: { product: ProductItem }) => {
     const [showDetails, setShowDetails] = useState(false);
 
-    if (!product.precioHistorico || product.precioHistorico.length === 0) {
+    // Validar que el historial tenga datos válidos
+    const hasValidHistory = product.precioHistorico && 
+                          Array.isArray(product.precioHistorico) && 
+                          product.precioHistorico.length > 0 &&
+                          product.precioHistorico.some(p => p.precioUnitario && p.precioUnitario > 0);
+
+    if (!hasValidHistory) {
       return (
         <div className="text-white/40 text-sm">
           Sin historial de precios
@@ -348,9 +357,9 @@ export function InventoryPage() {
       const { loadUserProducts } = useMultiUserFirestoreStore.getState();
       loadUserProducts(selectedUserId);
     } else {
-      // Load all products (admin view)
-      const { loadAllProducts } = useMultiUserFirestoreStore.getState();
-      loadAllProducts();
+      // Load current user's products (not all products)
+      const { loadProducts } = useMultiUserFirestoreStore.getState();
+      loadProducts();
     }
   }, [selectedUserId]);
 
@@ -450,7 +459,8 @@ export function InventoryPage() {
               cantidad: updatedProduct.cantidad || 0,
               precioUnitario: updatedProduct.precioUnitario || 0,
               unidadMedicion: editForm.unidadMedicion
-            }
+            },
+            currentUser?.id || 'admin' // Usar el ID del usuario actual
           );
         }
       }
@@ -770,10 +780,22 @@ export function InventoryPage() {
                 </div>
 
                 {/* Price History */}
-                {product.precioHistorico && product.precioHistorico.length > 0 && (
+                {product.precioHistorico && 
+                 Array.isArray(product.precioHistorico) && 
+                 product.precioHistorico.length > 0 &&
+                 product.precioHistorico.some((p: any) => p.precioUnitario && p.precioUnitario > 0) ? (
                   <div className="mt-3">
                     <PriceHistoryChart product={product} />
                   </div>
+                ) : (
+                  product.precioUnitario && product.precioUnitario > 0 ? (
+                    <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-2 text-white/40 text-sm">
+                        <TrendingUp size={14} className="text-white/20" />
+                        <span>Sin historial de precios. Actualiza el precio para comenzar el seguimiento.</span>
+                      </div>
+                    </div>
+                  ) : null
                 )}
 
                 <div className="flex gap-3 mt-4">

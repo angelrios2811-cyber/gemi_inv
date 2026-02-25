@@ -24,9 +24,8 @@ const ExchangeRatesHeader: React.FC<ExchangeRatesHeaderProps> = ({ compact = fal
   };
 
   // Función para guardar tasas actuales en memoria (no guardar en Firebase)
-  const saveCurrentRates = async (currentRates: ExchangeRates) => {
+  const saveCurrentRates = async (_currentRates: ExchangeRates) => {
     // No guardar en Firebase para evitar errores
-    console.log('Tasas actuales:', currentRates);
   };
 
   useEffect(() => {

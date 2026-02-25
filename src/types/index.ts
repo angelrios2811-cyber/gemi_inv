@@ -34,7 +34,7 @@ export interface ExpenseRecord {
   categoria: string;
   bcvRate: number;
   usdtRate: number;
-  tipo: 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros'; // compra de inventario u otro gasto
+  tipo: 'stock' | 'compra' | 'gasto' | 'salida' | 'entretenimiento' | 'transporte' | 'servicio' | 'salud' | 'educacion' | 'hogar' | 'otros'; // stock/inventario, compra de inventario u otro gasto
   productos?: ProductItem[]; // si es compra, detalle de productos
   userId?: string; // Multi-user support
 }

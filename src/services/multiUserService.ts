@@ -20,7 +20,12 @@ export class MultiUserService {
       precioUSD: product.precioUSD,
       precioUSDT: product.precioUSDT,
       unidadMedicion: product.unidadMedicion,
-      userId: product.userId
+      userId: product.userId,
+      // Agregar propiedades faltantes para el historial
+      precioHistorico: product.precioHistorico,
+      ultimaActualizacion: product.ultimaActualizacion,
+      tasaBCV: product.tasaBCV,
+      tasaUSDT: product.tasaUSDT
     };
   }
 
@@ -126,7 +131,12 @@ export class MultiUserService {
         precioUSDT: updates.precioUSDT,
         stockAlert: updates.alertaBajoStock ? 1 : 0,
         minimumStock: updates.stockMinimo,
-        unidadMedicion: updates.unidadMedicion
+        unidadMedicion: updates.unidadMedicion,
+        // Incluir propiedades faltantes para el historial
+        precioHistorico: updates.precioHistorico,
+        ultimaActualizacion: updates.ultimaActualizacion,
+        tasaBCV: updates.tasaBCV,
+        tasaUSDT: updates.tasaUSDT
       };
       
       // Eliminar propiedades undefined
@@ -138,7 +148,7 @@ export class MultiUserService {
       
       await FirestoreService.updateProduct(id, updateData);
     } catch (error) {
-      console.error('Error actualizando producto:', error);
+      console.error('Error updating product:', error);
       throw error;
     }
   }

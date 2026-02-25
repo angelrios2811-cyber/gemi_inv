@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Package, DollarSign, TrendingUp, Filter, Edit, Trash2, Settings, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useMultiUserStore } from '../store/useMultiUserStore';
+import { BCVService } from '../services/bcvService';
 import type { User } from '../types/auth';
 
 export default function AdminDashboard() {
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
                   <TrendingUp size={20} className="text-amber-400" />
                 </div>
                 <span className="text-2xl font-bold text-white">
-                  ${globalStats.totalValue.toFixed(0)}
+                  {BCVService.formatBs(globalStats.totalValue)}
                 </span>
               </div>
               <p className="text-white/60 text-sm">Valor Total</p>
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
                   <DollarSign size={20} className="text-red-400" />
                 </div>
                 <span className="text-2xl font-bold text-white">
-                  ${globalStats.totalExpenses.toFixed(0)}
+                  {BCVService.formatBs(globalStats.totalExpenses)}
                 </span>
               </div>
               <p className="text-white/60 text-sm">Gastos Totales</p>

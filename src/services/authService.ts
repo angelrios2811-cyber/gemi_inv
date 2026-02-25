@@ -3,10 +3,42 @@ import type { User } from '../types/auth';
 
 export class AuthService {
   private static readonly USERS_COLLECTION = 'users';
+  private static readonly SESSION_KEY = 'auth_session';
+  private static readonly TOKEN_KEY = 'auth_token';
   
-  // Variables estáticas para almacenamiento en memoria
+  // Variables estáticas para almacenamiento en memoria (copia de sessionStorage)
   private static currentUser: User | null = null;
   private static currentToken: string | null = null;
+
+  // Métodos para persistencia en sessionStorage
+  private static saveSession(): void {
+    if (this.currentUser && this.currentToken) {
+      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
+      sessionStorage.setItem(this.TOKEN_KEY, this.currentToken);
+    }
+  }
+
+  private static loadSession(): void {
+    try {
+      const userStr = sessionStorage.getItem(this.SESSION_KEY);
+      const token = sessionStorage.getItem(this.TOKEN_KEY);
+      
+      if (userStr && token) {
+        this.currentUser = JSON.parse(userStr);
+        this.currentToken = token;
+      }
+    } catch (error) {
+      console.error('Error loading session:', error);
+      this.clearSession();
+    }
+  }
+
+  private static clearSession(): void {
+    this.currentUser = null;
+    this.currentToken = null;
+    sessionStorage.removeItem(this.SESSION_KEY);
+    sessionStorage.removeItem(this.TOKEN_KEY);
+  }
 
   // Convertir Timestamp de Firebase a Date
   private static convertTimestamp(timestamp: any): Date {
@@ -47,23 +79,31 @@ export class AuthService {
       }
 
       const users = await this.getAllUsers();
-      const user = users.find(u => u.email === email && u.isActive);
-
-      if (!user) {
-        throw new Error('Credenciales inválidas');
+      
+      // Para el admin, buscar específicamente el usuario con username "angelrios2811"
+      let user: User | undefined;
+      if (email === 'angelrios2811@gmail.com') {
+        user = users.find(u => u.email === email && u.username === 'angelrios2811' && u.isActive);
+      } else {
+        user = users.find(u => u.email === email && u.isActive);
       }
-
+      
+      if (!user) {
+        throw new Error(`Usuario no encontrado: ${email}`);
+      }
+      
       const isValidPassword = await this.verifyPassword(password, user.passwordHash);
       if (!isValidPassword) {
-        throw new Error('Credenciales inválidas');
+        throw new Error('Contraseña incorrecta');
       }
 
       // Generar token simple (en producción usar JWT)
       const token = this.generateToken(user);
 
-      // Guardar en memoria (no localStorage)
+      // Guardar en memoria y sessionStorage
       this.currentUser = user;
       this.currentToken = token;
+      this.saveSession(); // Guardar en sessionStorage
 
       return { user, token };
     } catch (error) {
@@ -236,15 +276,24 @@ export class AuthService {
   static logout(): void {
     this.currentUser = null;
     this.currentToken = null;
+    this.clearSession(); // Limpiar sessionStorage
   }
 
   // Obtener usuario actual
   static getCurrentUser(): User | null {
+    // Si no está en memoria, intentar cargar desde sessionStorage
+    if (!this.currentUser) {
+      this.loadSession();
+    }
     return this.currentUser;
   }
 
   // Obtener token actual
   static getCurrentToken(): string | null {
+    // Si no está en memoria, intentar cargar desde sessionStorage
+    if (!this.currentToken) {
+      this.loadSession();
+    }
     return this.currentToken;
   }
 
@@ -275,15 +324,63 @@ export class AuthService {
     try {
       const tokenData = JSON.parse(atob(token));
       const user = this.getCurrentUser();
-      return !!(user && user.id === tokenData.userId) ? false : true;
+      return !!(user && user.id === tokenData.userId);
     } catch {
       return false;
     }
   }
 
-  // Generar ID simple
+  // Función para limpiar usuarios duplicados
+  static async cleanupDuplicateUsers(): Promise<void> {
+    try {
+      const users = await this.getAllUsers();
+      
+      // Agrupar usuarios por email
+      const userGroups: Record<string, User[]> = {};
+      users.forEach(user => {
+        if (!userGroups[user.email]) {
+          userGroups[user.email] = [];
+        }
+        userGroups[user.email].push(user);
+      });
+      
+      const duplicates = Object.entries(userGroups).filter(([_, userList]) => userList.length > 1);
+      
+      if (duplicates.length === 0) {
+        return;
+      }
+      
+      for (const [email, duplicateUsers] of duplicates) {
+        // Mantener el más reciente (basado en createdAt o el que tenga username correcto)
+        let userToKeep = duplicateUsers[0];
+        
+        // Para el admin, mantener el que tenga el username correcto
+        if (email === 'angelrios2811@gmail.com') {
+          const correctAdmin = duplicateUsers.find(u => u.username === 'angelrios2811');
+          if (correctAdmin) {
+            userToKeep = correctAdmin;
+          }
+        }
+        
+        const usersToDelete = duplicateUsers.filter(u => u.id !== userToKeep.id);
+        
+        for (const userToDelete of usersToDelete) {
+          await this.deleteUser(userToDelete.id);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Error limpiando usuarios duplicados:', error);
+    }
+  }
+
   private static generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+
+  // Inicializar la sesión al cargar la aplicación
+  static initializeSession(): void {
+    this.loadSession();
   }
 }
 

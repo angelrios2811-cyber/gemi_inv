@@ -4,53 +4,52 @@ import type { User } from '../types/auth';
 
 export async function initializeAdminUser(): Promise<void> {
   try {
-    // Primero verificar si ya existe un usuario admin
+    // Primero limpiar usuarios duplicados
+    await AuthService.cleanupDuplicateUsers();
+    
+    // Luego verificar si ya existe un usuario admin
     const existingUsers = await AuthService.getAllUsers();
-    const existingAdmin = existingUsers.find(u => u.email === 'angelrios2811@gmail.com');
+    
+    const existingAdmin = existingUsers.find(u => u.email === 'angelrios2811@gmail.com' && u.username === 'angelrios2811');
     
     if (existingAdmin) {
       return; // No hacer nada más si ya existe
     }
     
     // Solo crear si no existe
-    console.log('🔐 Creando usuario admin inicial...');
-    
     // Crear usuario admin con las credenciales solicitadas
-    const adminUser = await AuthService.register({
+    await AuthService.register({
       email: 'angelrios2811@gmail.com',
       username: 'angelrios2811',
       password: '5VG3Y3TTW5',
       role: 'admin'
     });
     
-    console.log('✅ Usuario admin creado exitosamente:');
-    console.log('📧 Email:', adminUser.email);
-    console.log('👤 Usuario:', adminUser.username);
-    console.log('🔐 Rol:', adminUser.role);
-    console.log('🆔 ID:', adminUser.id);
-    console.log('🔒 Contraseña encriptada:', '✅');
+    // Verificar que se puede hacer login
+    try {
+      await AuthService.login('angelrios2811@gmail.com', '5VG3Y3TTW5');
+    } catch (error) {
+      console.error('❌ Error verificando login del admin:', error);
+    }
     
   } catch (error) {
     console.error('❌ Error inicializando usuario admin:', error);
-    // No lanzar el error para que no bloquee la aplicación
   }
 }
 
-// Función para verificar si el usuario admin existe (solo lectura)
-export async function checkAdminUser(): Promise<User | null> {
+// Función para obtener el usuario admin (si existe)
+export async function getAdminUser(): Promise<User | null> {
   try {
     const users = await AuthService.getAllUsers();
     const adminUser = users.find(u => u.email === 'angelrios2811@gmail.com');
     
     if (adminUser) {
-      console.log('✅ Usuario admin encontrado:', adminUser.username);
       return adminUser;
     } else {
-      console.log('❌ No se encontró usuario admin');
       return null;
     }
   } catch (error) {
-    console.error('❌ Error verificando usuario admin:', error);
+    console.error('❌ Error obteniendo usuario admin:', error);
     return null;
   }
 }

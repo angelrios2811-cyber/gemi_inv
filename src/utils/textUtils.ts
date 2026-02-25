@@ -2,31 +2,6 @@
 // Funciones para formatear texto
 
 /**
- * Convierte la primera letra de cada palabra a mayúscula
- */
-export function capitalizeFirstLetter(text: string): string {
-  if (!text) return '';
-  
-  return text
-    .toLowerCase()
-    .split(' ')
-    .map(word => {
-      if (word.length === 0) return '';
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    })
-    .join(' ');
-}
-
-/**
- * Convierte solo la primera letra del texto a mayúscula
- */
-export function capitalizeFirstLetterOnly(text: string): string {
-  if (!text) return '';
-  
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-}
-
-/**
  * Manejador de input para capitalizar automáticamente
  */
 export function handleCapitalization(
