@@ -6,22 +6,22 @@ export class AuthService {
   private static readonly SESSION_KEY = 'auth_session';
   private static readonly TOKEN_KEY = 'auth_token';
   
-  // Variables estáticas para almacenamiento en memoria (copia de sessionStorage)
+  // Variables estáticas para almacenamiento en memoria (copia de localStorage)
   private static currentUser: User | null = null;
   private static currentToken: string | null = null;
 
-  // Métodos para persistencia en sessionStorage
+  // Métodos para persistencia en localStorage
   private static saveSession(): void {
     if (this.currentUser && this.currentToken) {
-      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
-      sessionStorage.setItem(this.TOKEN_KEY, this.currentToken);
+      localStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
+      localStorage.setItem(this.TOKEN_KEY, this.currentToken);
     }
   }
 
   private static loadSession(): void {
     try {
-      const userStr = sessionStorage.getItem(this.SESSION_KEY);
-      const token = sessionStorage.getItem(this.TOKEN_KEY);
+      const userStr = localStorage.getItem(this.SESSION_KEY);
+      const token = localStorage.getItem(this.TOKEN_KEY);
       
       if (userStr && token) {
         this.currentUser = JSON.parse(userStr);
@@ -36,8 +36,8 @@ export class AuthService {
   private static clearSession(): void {
     this.currentUser = null;
     this.currentToken = null;
-    sessionStorage.removeItem(this.SESSION_KEY);
-    sessionStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.SESSION_KEY);
+    localStorage.removeItem(this.TOKEN_KEY);
   }
 
   // Convertir Timestamp de Firebase a Date
@@ -80,12 +80,15 @@ export class AuthService {
 
       const users = await this.getAllUsers();
       
+      // Convertir email a minúsculas para búsqueda case-insensitive
+      const normalizedEmail = email.toLowerCase();
+      
       // Para el admin, buscar específicamente el usuario con username "angelrios2811"
       let user: User | undefined;
-      if (email === 'angelrios2811@gmail.com') {
-        user = users.find(u => u.email === email && u.username === 'angelrios2811' && u.isActive);
+      if (normalizedEmail === 'angelrios2811@gmail.com') {
+        user = users.find(u => u.email.toLowerCase() === normalizedEmail && u.username === 'angelrios2811' && u.isActive);
       } else {
-        user = users.find(u => u.email === email && u.isActive);
+        user = users.find(u => u.email.toLowerCase() === normalizedEmail && u.isActive);
       }
       
       if (!user) {
@@ -100,10 +103,10 @@ export class AuthService {
       // Generar token simple (en producción usar JWT)
       const token = this.generateToken(user);
 
-      // Guardar en memoria y sessionStorage
+      // Guardar en memoria y localStorage
       this.currentUser = user;
       this.currentToken = token;
-      this.saveSession(); // Guardar en sessionStorage
+      this.saveSession(); // Guardar en localStorage
 
       return { user, token };
     } catch (error) {
@@ -127,8 +130,11 @@ export class AuthService {
 
       const users = await this.getAllUsers();
       
-      // Verificar si el email ya existe
-      if (users.some(u => u.email === userData.email)) {
+      // Convertir email a minúsculas para verificación case-insensitive
+      const normalizedEmail = userData.email.toLowerCase();
+      
+      // Verificar si el email ya existe (case-insensitive)
+      if (users.some(u => u.email.toLowerCase() === normalizedEmail)) {
         throw new Error('El email ya está registrado');
       }
 
@@ -276,12 +282,12 @@ export class AuthService {
   static logout(): void {
     this.currentUser = null;
     this.currentToken = null;
-    this.clearSession(); // Limpiar sessionStorage
+    this.clearSession(); // Limpiar localStorage
   }
 
   // Obtener usuario actual
   static getCurrentUser(): User | null {
-    // Si no está en memoria, intentar cargar desde sessionStorage
+    // Si no está en memoria, intentar cargar desde localStorage
     if (!this.currentUser) {
       this.loadSession();
     }
@@ -290,7 +296,7 @@ export class AuthService {
 
   // Obtener token actual
   static getCurrentToken(): string | null {
-    // Si no está en memoria, intentar cargar desde sessionStorage
+    // Si no está en memoria, intentar cargar desde localStorage
     if (!this.currentToken) {
       this.loadSession();
     }

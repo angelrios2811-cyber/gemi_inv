@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Verificar autenticación al inicio
   checkAuth: () => {
-    // Inicializar sesión desde sessionStorage primero
+    // Inicializar sesión desde localStorage primero
     AuthService.initializeSession();
     
     const token = AuthService.getCurrentToken();

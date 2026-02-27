@@ -51,72 +51,73 @@ export function Layout() {
         <div className="absolute bottom-20 right-20 w-1 h-1 bg-violet-400/40 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
       </div>
 
-      {/* Enhanced User Header */}
-      <div className={`relative z-10 px-4 pb-3 mt-4 max-w-lg mx-auto w-full transition-all duration-1000 transform ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-        <div className="glass-strong p-4 rounded-2xl border border-white/10 relative overflow-hidden">
-          {/* Glow Effect */}
-          <div className="absolute -inset-px bg-gradient-to-r from-violet-500/10 to-blue-500/10 rounded-2xl blur-lg"></div>
-          
-          {/* Content */}
-          <div className="relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center relative overflow-hidden group">
-                    {/* Inner Glow */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-transparent rounded-xl"></div>
-                    {/* Animated Sparkle */}
-                    <Sparkles className="absolute top-1 right-1 w-3 h-3 text-violet-300 animate-pulse" />
-                    <User size={20} className="text-violet-300 relative z-10" />
+      {/* Main content with proper scrolling */}
+      <main className="flex-1 relative z-10 px-4 pb-20 max-w-lg mx-auto w-full overflow-y-auto">
+        {/* User Header - No fijo, dentro del contenido */}
+        <div className={`py-4 transition-all duration-1000 transform ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className="glass-strong p-4 rounded-2xl border border-white/10 relative overflow-hidden">
+            {/* Glow Effect */}
+            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/10 to-blue-500/10 rounded-2xl blur-lg"></div>
+            
+            {/* Content */}
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-violet-600/30 border border-violet-500/40 flex items-center justify-center relative overflow-hidden group">
+                      {/* Inner Glow */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-transparent rounded-xl"></div>
+                      {/* Animated Sparkle */}
+                      <Sparkles className="absolute top-1 right-1 w-3 h-3 text-violet-300 animate-pulse" />
+                      <User size={20} className="text-violet-300 relative z-10" />
+                    </div>
+                    {/* Ring Animation */}
+                    <div className="absolute -inset-1 border border-violet-500/30 rounded-xl animate-pulse"></div>
                   </div>
-                  {/* Ring Animation */}
-                  <div className="absolute -inset-1 border border-violet-500/30 rounded-xl animate-pulse"></div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{user?.username}</p>
+                    <p className="text-white/50 text-xs">{user?.email}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        user?.role === 'admin' 
+                          ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      }`}>
+                        {user?.role === 'admin' ? 'Admin' : 'Usuario'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{user?.username}</p>
-                  <p className="text-white/50 text-xs">{user?.email}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      user?.role === 'admin' 
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                    }`}>
-                      {user?.role === 'admin' ? 'Admin' : 'Usuario'}
-                    </span>
+                
+                <div className="flex items-center gap-2">
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 text-xs font-medium">Online</span>
                   </div>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="p-2.5 rounded-xl hover:bg-white/10 transition-all duration-200 text-white/40 hover:text-white/60 hover:scale-110 group"
+                    title="Cerrar sesión"
+                  >
+                    <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+                  </button>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
-                {/* Status Indicator */}
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 text-xs font-medium">Online</span>
-                </div>
-                
-                <button
-                  onClick={handleLogout}
-                  className="p-2.5 rounded-xl hover:bg-white/10 transition-all duration-200 text-white/40 hover:text-white/60 hover:scale-110 group"
-                  title="Cerrar sesión"
-                >
-                  <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
-                </button>
+              {/* Activity Bar */}
+              <div className="mt-3 flex items-center gap-2">
+                <Activity size={12} className="text-violet-400/60" />
+                <div className="flex-1 h-0.5 bg-gradient-to-r from-violet-500/30 to-transparent rounded-full"></div>
+                <span className="text-violet-400/60 text-xs">Sistema activo</span>
+                <div className="flex-1 h-0.5 bg-gradient-to-l from-violet-500/30 to-transparent rounded-full"></div>
               </div>
-            </div>
-            
-            {/* Activity Bar */}
-            <div className="mt-3 flex items-center gap-2">
-              <Activity size={12} className="text-violet-400/60" />
-              <div className="flex-1 h-0.5 bg-gradient-to-r from-violet-500/30 to-transparent rounded-full"></div>
-              <span className="text-violet-400/60 text-xs">Sistema activo</span>
-              <div className="flex-1 h-0.5 bg-gradient-to-l from-violet-500/30 to-transparent rounded-full"></div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main content with proper scrolling */}
-      <main className="flex-1 relative z-10 px-4 pb-20 max-w-lg mx-auto w-full overflow-y-auto">
+        {/* Page Content */}
         <Outlet />
       </main>
 
