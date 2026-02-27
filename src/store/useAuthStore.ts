@@ -74,11 +74,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Verificar autenticación al inicio
   checkAuth: () => {
-    // Inicializar sesión desde localStorage primero
+    // Inicializar sesión con protección avanzada
     AuthService.initializeSession();
     
-    const token = AuthService.getCurrentToken();
-    const user = AuthService.getCurrentUser();
+    let token = AuthService.getCurrentToken();
+    let user = AuthService.getCurrentUser();
+    
+    // Si no hay sesión, intentar restauración forzada
+    if (!token || !user) {
+      const restored = AuthService.forceSessionRestore();
+      if (restored) {
+        token = AuthService.getCurrentToken();
+        user = AuthService.getCurrentUser();
+      }
+    }
+    
+    // Verificar salud de la sesión
+    const healthCheck = AuthService.checkSessionHealth();
+    if (!healthCheck.healthy) {
+      // No mostrar warning en producción, solo registrar errores críticos
+      if (healthCheck.issues.includes('localStorage access error')) {
+        console.error('Critical localStorage access error');
+      }
+    }
     
     if (token && user && AuthService.verifyToken(token)) {
       set({

@@ -101,30 +101,66 @@ export class ExchangeRateService {
   }
 
   /**
-   * Limpia tasas antiguas (más de 30 días)
+   * Obtiene tasas históricas para un rango de fechas
    */
-  static async cleanupOldRates(): Promise<void> {
+  static async getHistoricalRates(type: 'BCV' | 'USDT', days: number = 7): Promise<ExchangeRate[]> {
     try {
       const rates = await FirestoreService.getExchangeRates();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const typeRates = rates.filter(r => r.type === type);
       
-      const oldRates = rates.filter(rate => 
-        new Date(rate.date) < thirtyDaysAgo
-      );
-
-      // Eliminar tasas antiguas una por una
-      for (const oldRate of oldRates) {
-        if (oldRate.id) {
-          await FirestoreService.deleteExchangeRate(oldRate.id);
-        }
-      }
-
-      if (oldRates.length > 0) {
-        // Old rates cleaned up
-      }
+      // Ordenar por fecha descendente
+      typeRates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      // Tomar las últimas N tasas
+      return typeRates.slice(0, days);
     } catch (error) {
-      console.error('Error cleaning up old rates:', error);
+      console.error('Error getting historical rates:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene la tasa más reciente para un tipo específico
+   */
+  static async getMostRecentRate(type: 'BCV' | 'USDT'): Promise<ExchangeRate | null> {
+    try {
+      const rates = await FirestoreService.getExchangeRates();
+      const typeRates = rates.filter(r => r.type === type);
+      
+      if (typeRates.length === 0) return null;
+      
+      // Ordenar por fecha descendente y tomar la más reciente
+      typeRates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return typeRates[0];
+    } catch (error) {
+      console.error('Error getting most recent rate:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene la tasa de una fecha específica o la más cercana anterior
+   */
+  static async getRateForDate(type: 'BCV' | 'USDT', targetDate: string): Promise<number> {
+    try {
+      // Primero intentar obtener la tasa exacta
+      const exactRate = await this.getExchangeRate(type, targetDate);
+      if (exactRate) {
+        return exactRate.rate;
+      }
+      
+      // Si no hay tasa exacta, buscar la más cercana anterior
+      const rates = await FirestoreService.getExchangeRates();
+      const typeRates = rates.filter(r => r.type === type && r.date <= targetDate);
+      
+      if (typeRates.length === 0) return 0;
+      
+      // Ordenar por fecha descendente y tomar la más reciente
+      typeRates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return typeRates[0].rate;
+    } catch (error) {
+      console.error('Error getting rate for date:', error);
+      return 0;
     }
   }
 }

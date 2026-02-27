@@ -16,12 +16,21 @@ import './utils/debugAuth'; // Importar para que esté disponible globalmente
 import AuthService from './services/authService'; // Importar AuthService
 
 function App() {
-  // Inicializar usuario admin al cargar la aplicación (solo una vez)
+  // Inicializar usuario admin y protección de sesión al cargar la aplicación
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Inicializar sesión desde sessionStorage
+        // Inicializar sesión con protección avanzada
         AuthService.initializeSession();
+        
+        // Verificar salud de la sesión actual
+        const healthCheck = AuthService.checkSessionHealth();
+        if (!healthCheck.healthy) {
+          // Intentar restauración forzada si hay problemas críticos
+          if (!AuthService.getCurrentUser() || !AuthService.getCurrentToken()) {
+            AuthService.forceSessionRestore();
+          }
+        }
         
         // Limpiar localStorage para forzar uso de Firebase
         clearAllLocalStorage();

@@ -5,39 +5,197 @@ export class AuthService {
   private static readonly USERS_COLLECTION = 'users';
   private static readonly SESSION_KEY = 'auth_session';
   private static readonly TOKEN_KEY = 'auth_token';
+  private static readonly BACKUP_SESSION_KEY = 'backup_auth_session';
+  private static readonly BACKUP_TOKEN_KEY = 'backup_auth_token';
+  private static readonly SESSION_TIMESTAMP_KEY = 'session_timestamp';
+  private static readonly MAX_SESSION_AGE = 30 * 24 * 60 * 60 * 1000; // 30 días
   
   // Variables estáticas para almacenamiento en memoria (copia de localStorage)
   private static currentUser: User | null = null;
   private static currentToken: string | null = null;
+  private static sessionRestored = false;
 
-  // Métodos para persistencia en localStorage
+  // Métodos para persistencia robusta en múltiples capas
   private static saveSession(): void {
     if (this.currentUser && this.currentToken) {
-      localStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
-      localStorage.setItem(this.TOKEN_KEY, this.currentToken);
+      const sessionData = {
+        user: this.currentUser,
+        token: this.currentToken,
+        timestamp: Date.now()
+      };
+
+      // Guardar en localStorage principal
+      try {
+        localStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
+        localStorage.setItem(this.TOKEN_KEY, this.currentToken);
+        localStorage.setItem(this.SESSION_TIMESTAMP_KEY, Date.now().toString());
+      } catch (error) {
+        console.warn('Error saving to primary localStorage:', error);
+      }
+
+      // Guardar backup en localStorage
+      try {
+        localStorage.setItem(this.BACKUP_SESSION_KEY, JSON.stringify(sessionData));
+      } catch (error) {
+        console.warn('Error saving backup session:', error);
+      }
+
+      // Guardar en sessionStorage como respaldo adicional
+      try {
+        sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
+        sessionStorage.setItem(this.TOKEN_KEY, this.currentToken);
+      } catch (error) {
+        console.warn('Error saving to sessionStorage:', error);
+      }
+
+      // Guardar en document.cookie como último respaldo
+      try {
+        const cookieValue = btoa(JSON.stringify(sessionData));
+        document.cookie = `auth_backup=${cookieValue}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Strict`;
+      } catch (error) {
+        console.warn('Error saving to cookie:', error);
+      }
     }
   }
 
   private static loadSession(): void {
+    // Intentar cargar desde memoria primero
+    if (this.currentUser && this.currentToken && this.sessionRestored) {
+      return;
+    }
+
+    let sessionLoaded = false;
+    const now = Date.now();
+
+    // Método 1: Intentar desde localStorage principal
     try {
       const userStr = localStorage.getItem(this.SESSION_KEY);
       const token = localStorage.getItem(this.TOKEN_KEY);
+      const timestamp = localStorage.getItem(this.SESSION_TIMESTAMP_KEY);
       
-      if (userStr && token) {
-        this.currentUser = JSON.parse(userStr);
-        this.currentToken = token;
+      if (userStr && token && timestamp) {
+        const sessionAge = now - parseInt(timestamp);
+        if (sessionAge < this.MAX_SESSION_AGE) {
+          this.currentUser = JSON.parse(userStr);
+          this.currentToken = token;
+          sessionLoaded = true;
+        } else {
+          this.clearSession();
+        }
       }
     } catch (error) {
-      console.error('Error loading session:', error);
-      this.clearSession();
+      console.warn('Error loading from primary localStorage:', error);
+    }
+
+    // Método 2: Intentar desde backup localStorage si el principal falló
+    if (!sessionLoaded) {
+      try {
+        const backupStr = localStorage.getItem(this.BACKUP_SESSION_KEY);
+        if (backupStr) {
+          const backupData = JSON.parse(backupStr);
+          const sessionAge = now - backupData.timestamp;
+          
+          if (sessionAge < this.MAX_SESSION_AGE && backupData.user && backupData.token) {
+            this.currentUser = backupData.user;
+            this.currentToken = backupData.token;
+            sessionLoaded = true;
+            
+            // Restaurar en localStorage principal
+            this.saveSession();
+          }
+        }
+      } catch (error) {
+        console.warn('Error loading from backup localStorage:', error);
+      }
+    }
+
+    // Método 3: Intentar desde sessionStorage
+    if (!sessionLoaded) {
+      try {
+        const userStr = sessionStorage.getItem(this.SESSION_KEY);
+        const token = sessionStorage.getItem(this.TOKEN_KEY);
+        
+        if (userStr && token) {
+          this.currentUser = JSON.parse(userStr);
+          this.currentToken = token;
+          sessionLoaded = true;
+          
+          // Restaurar en localStorage principal
+          this.saveSession();
+        }
+      } catch (error) {
+        console.warn('Error loading from sessionStorage:', error);
+      }
+    }
+
+    // Método 4: Intentar desde cookies como último recurso
+    if (!sessionLoaded) {
+      try {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+          const [name, value] = cookie.trim().split('=');
+          if (name === 'auth_backup' && value) {
+            const decodedValue = atob(value);
+            const cookieData = JSON.parse(decodedValue);
+            const sessionAge = now - cookieData.timestamp;
+            
+            if (sessionAge < this.MAX_SESSION_AGE && cookieData.user && cookieData.token) {
+              this.currentUser = cookieData.user;
+              this.currentToken = cookieData.token;
+              sessionLoaded = true;
+              
+              // Restaurar en localStorage principal
+              this.saveSession();
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error loading from cookies:', error);
+      }
+    }
+
+    if (sessionLoaded) {
+      this.sessionRestored = true;
     }
   }
 
   private static clearSession(): void {
     this.currentUser = null;
     this.currentToken = null;
-    localStorage.removeItem(this.SESSION_KEY);
-    localStorage.removeItem(this.TOKEN_KEY);
+    this.sessionRestored = false;
+
+    // Limpiar localStorage principal
+    try {
+      localStorage.removeItem(this.SESSION_KEY);
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.SESSION_TIMESTAMP_KEY);
+    } catch (error) {
+      console.warn('Error clearing primary localStorage:', error);
+    }
+
+    // Limpiar backup localStorage
+    try {
+      localStorage.removeItem(this.BACKUP_SESSION_KEY);
+      localStorage.removeItem(this.BACKUP_TOKEN_KEY);
+    } catch (error) {
+      console.warn('Error clearing backup localStorage:', error);
+    }
+
+    // Limpiar sessionStorage
+    try {
+      sessionStorage.removeItem(this.SESSION_KEY);
+      sessionStorage.removeItem(this.TOKEN_KEY);
+    } catch (error) {
+      console.warn('Error clearing sessionStorage:', error);
+    }
+
+    // Limpiar cookies
+    try {
+      document.cookie = 'auth_backup=; max-age=0; path=/; SameSite=Strict';
+    } catch (error) {
+      console.warn('Error clearing cookies:', error);
+    }
   }
 
   // Convertir Timestamp de Firebase a Date
@@ -387,6 +545,125 @@ export class AuthService {
   // Inicializar la sesión al cargar la aplicación
   static initializeSession(): void {
     this.loadSession();
+    this.setupSessionProtection();
+  }
+
+  // Configurar protección avanzada de sesión
+  private static setupSessionProtection(): void {
+    // Evitar múltiples inicializaciones
+    if (this.sessionRestored) {
+      return;
+    }
+
+    // Detector de eventos para proteger la sesión
+    const protectSession = () => {
+      if (this.currentUser && this.currentToken) {
+        // Refrescar la sesión periódicamente
+        this.saveSession();
+      }
+    };
+
+    // Eventos que pueden causar pérdida de sesión
+    const events = [
+      'beforeunload',  // Cerrar pestaña/ventana
+      'pagehide',      // Navegación away
+      'visibilitychange', // Cambio de pestaña
+      'focus',         // Volver a la pestaña
+      'storage',       // Cambios en storage
+    ];
+
+    events.forEach(event => {
+      try {
+        window.addEventListener(event, protectSession, { passive: true });
+      } catch (error) {
+        console.warn(`Could not add ${event} listener:`, error);
+      }
+    });
+
+    // Verificación periódica de sesión
+    setInterval(() => {
+      if (this.currentUser && this.currentToken) {
+        // Verificar que la sesión aún sea válida
+        const timestamp = localStorage.getItem(this.SESSION_TIMESTAMP_KEY);
+        if (timestamp) {
+          const sessionAge = Date.now() - parseInt(timestamp);
+          if (sessionAge < this.MAX_SESSION_AGE) {
+            // Refrescar timestamp para extender la sesión
+            this.saveSession();
+          } else {
+            this.clearSession();
+          }
+        }
+      }
+    }, 5 * 60 * 1000); // Cada 5 minutos
+
+    // Detector de cambios en localStorage (otras pestañas)
+    try {
+      window.addEventListener('storage', (e) => {
+        if (e.key === this.SESSION_KEY || e.key === this.TOKEN_KEY) {
+          this.loadSession();
+        }
+      });
+    } catch (error) {
+      console.warn('Could not add storage listener:', error);
+    }
+  }
+
+  // Forzar restauración de sesión (para casos extremos)
+  static forceSessionRestore(): boolean {
+    // Limpiar memoria temporal
+    this.sessionRestored = false;
+    
+    // Intentar carga múltiple
+    for (let i = 0; i < 3; i++) {
+      this.loadSession();
+      if (this.currentUser && this.currentToken) {
+        return true;
+      }
+      
+      // Pequeña espera entre intentos
+      new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    return false;
+  }
+
+  // Verificación de salud de la sesión
+  static checkSessionHealth(): { healthy: boolean; issues: string[] } {
+    const issues: string[] = [];
+    
+    if (!this.currentUser) {
+      issues.push('No user in memory');
+    }
+    
+    if (!this.currentToken) {
+      issues.push('No token in memory');
+    }
+    
+    try {
+      const userStr = localStorage.getItem(this.SESSION_KEY);
+      const token = localStorage.getItem(this.TOKEN_KEY);
+      
+      if (!userStr) issues.push('No user in localStorage');
+      if (!token) issues.push('No token in localStorage');
+      
+      const timestamp = localStorage.getItem(this.SESSION_TIMESTAMP_KEY);
+      if (timestamp) {
+        const sessionAge = Date.now() - parseInt(timestamp);
+        if (sessionAge > this.MAX_SESSION_AGE) {
+          issues.push('Session expired');
+        }
+      } else {
+        issues.push('No timestamp in localStorage');
+      }
+    } catch (error) {
+      issues.push('localStorage access error');
+    }
+    
+    return {
+      healthy: issues.length === 0,
+      issues
+    };
   }
 }
 
